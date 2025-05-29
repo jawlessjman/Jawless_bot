@@ -1,0 +1,1 @@
+start "discordbot" python main.py
