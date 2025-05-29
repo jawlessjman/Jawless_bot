@@ -154,7 +154,7 @@ async def kick(interaction : discord.Interaction, user: discord.User, reason: st
     if interaction.user.id == user.id:
         await interaction.response.send_message("You cannot kick yourself!", ephemeral=true)
         return
-    if interaction.user.top_role <= user.top_role:
+    if interaction.user.guild_permissions.administrator or  interaction.user.top_role <= user.top_role:
         await interaction.response.send_message("You cannot kick a user with a higher or equal role than you.", ephemeral=true)
         return
     try:
@@ -174,7 +174,7 @@ async def ban(interaction : discord.Interaction, user: discord.User, reason: str
     if interaction.user.id == user.id:
         await interaction.response.send_message("You cannot ban yourself!", ephemeral=true)
         return
-    if interaction.user.top_role <= user.top_role:
+    if interaction.user.guild_permissions.administrator or  interaction.user.top_role <= user.top_role:
         await interaction.response.send_message("You cannot ban a user with a higher or equal role than you.", ephemeral=true)
         return
     try:
@@ -210,7 +210,7 @@ async def warn(interaction : discord.Interaction, user: discord.User, reason: st
     if interaction.user.id == user.id:
         await interaction.response.send_message("You cannot warn yourself!", ephemeral=true)
         return
-    if interaction.user.top_role <= user.top_role:
+    if interaction.user.guild_permissions.administrator or  interaction.user.top_role <= user.top_role:
         await interaction.response.send_message("You cannot warn a user with a higher or equal role than you.", ephemeral=true)
         return
     try:
@@ -230,7 +230,7 @@ async def remove_warn(interaction : discord.Interaction, user: discord.User, rea
     if interaction.user.id == user.id:
         await interaction.response.send_message("You cannot remove a warn from yourself!", ephemeral=true)
         return
-    if interaction.user.top_role <= user.top_role:
+    if interaction.user.guild_permissions.administrator or interaction.user.top_role <= user.top_role:
         await interaction.response.send_message("You cannot remove a warn from a user with a higher or equal role than you.", ephemeral=true)
         return
     try:
