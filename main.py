@@ -29,13 +29,13 @@ tree = discord.app_commands.CommandTree(client=client)
 
 db = database()
 
-with open("txt_files\help.txt", "r") as file:
+with open("txt_files\\help.txt", "r") as file:
     helpList = file.readlines()
 
-with open("txt_files\meowjam_quotes.txt", "r") as file:
+with open("txt_files\\meowjam_quotes.txt", "r") as file:
     meowjamList = file.readlines()
 
-with open("txt_files\kayden_quotes.txt", "r") as file:
+with open("txt_files\\kayden_quotes.txt", "r") as file:
     kaydenList = file.readlines()
 
 #helper funtions
