@@ -335,8 +335,8 @@ async def on_message(message : discord.Message):
         if message.content.startswith("!restart"):
             await message.channel.send("Restarting bot...")
             print("Restarting bot...")
-            subprocess.run(["python", "main.py"])
-            exit(0)
+            subprocess.run(["restart.bat"], shell=True)
+            return
             
         elif message.content.startswith("!debug"):
             global debug
