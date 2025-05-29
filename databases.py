@@ -60,11 +60,11 @@ class database:
         return True
         
     def remove_warn(self, warn: server_warn) -> bool:
-        self.warns_collection.delete_one({
+        result = self.warns_collection.delete_one({
             'server_id': warn.server_id,
             'user_id': warn.user_id
         })
-        return self.warns_collection.deleted_count > 0
+        return result.deleted_count > 0
         
     def add_banned_word(self, word: banned_word) -> bool:
         # Check if the word already exists
@@ -97,11 +97,11 @@ class database:
         }) is not None 
         
     def remove_banned_word(self, word: str, server_id: int) -> bool:
-        self.banned_words_collection.delete_one({
+        result = self.banned_words_collection.delete_one({
             'word': word,
             'server_id': server_id
         })
-        return len(self.banned_words_collection.deleted_count) > 0
+        return result.deleted_count > 0
     
     def remove_all_banned_words(self, server_id: int) -> bool:
         result = self.banned_words_collection.delete_many({
