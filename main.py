@@ -290,9 +290,9 @@ async def purge(interaction : discord.Interaction, amount: int):
 @discord.app_commands.describe(word="Word to ban")
 async def add_banned_word(interaction : discord.Interaction, word: str):
     if db.add_banned_word(banned_word(word=word.upper(), server_id=interaction.guild.id)):
-        await interaction.response.send_message(f"{word} has been added to the banned words list.", ephemeral=true)
+        await interaction.response.send_message(f"has been added to the banned words list.", ephemeral=true)
     else:
-        await interaction.response.send_message(f"{word} is already banned in this server.", ephemeral=true)
+        await interaction.response.send_message(f"is already banned in this server.", ephemeral=true)
         
 @tree.command(name="removebannedword", description="Remove a banned word from the server")
 @discord.app_commands.allowed_installs(guilds=true, users=false)
@@ -301,9 +301,9 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
 @discord.app_commands.describe(word="Word to remove from banned words list")
 async def remove_banned_word(interaction : discord.Interaction, word: str):
     if db.remove_banned_word(word=word.upper(), server_id=interaction.guild.id):
-        await interaction.response.send_message(f"{word} has been removed from the banned words list.", ephemeral=true)
+        await interaction.response.send_message(f"has been removed from the banned words list.", ephemeral=true)
     else:
-        await interaction.response.send_message(f"{word} is not banned in this server.", ephemeral=true)
+        await interaction.response.send_message(f"is not banned in this server.", ephemeral=true)
 
 @tree.command(name="iswordbanned", description="Check if a word is banned in the server")
 @discord.app_commands.allowed_installs(guilds=true, users=false)
@@ -311,9 +311,9 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
 @discord.app_commands.describe(word="Word to check if it is banned")
 async def is_word_banned(interaction : discord.Interaction, word: str):
     if db.is_word_banned(word=word.upper(), server_id=interaction.guild.id):
-        await interaction.response.send_message(f"{word} is banned in this server.", ephemeral=true)
+        await interaction.response.send_message(f"is banned in this server.", ephemeral=true)
     else:
-        await interaction.response.send_message(f"{word} is not banned in this server.", ephemeral=true)
+        await interaction.response.send_message(f"is not banned in this server.", ephemeral=true)
         
 #remove all banned words
 @tree.command(name="removeallbannedwords", description="Remove all banned words from the server")
@@ -334,7 +334,6 @@ async def on_message(message : discord.Message):
     if message.author.id == owner:
         if message.content.startswith("!restart"):
             await message.channel.send("Restarting bot...")
-            print("Restarting bot...")
             subprocess.run(["restart.bat"], shell=True)
             return
             
