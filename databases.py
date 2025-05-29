@@ -101,7 +101,7 @@ class database:
             'word': word,
             'server_id': server_id
         })
-        return self.banned_words_collection.deleted_count > 0
+        return len(self.banned_words_collection.deleted_count) > 0
     
     def remove_all_banned_words(self, server_id: int) -> bool:
         result = self.banned_words_collection.delete_many({
