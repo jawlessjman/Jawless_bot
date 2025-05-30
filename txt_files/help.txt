@@ -1,4 +1,5 @@
 - /help : will display this help menu
+- /audiohelp : will display the audio help menu
 - /hello : makes the bot say hello
 - /say : make the bot say a message
 - /meowjam : send a meowjam quote

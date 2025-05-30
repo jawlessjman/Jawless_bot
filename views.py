@@ -41,3 +41,33 @@ def send_kayden_view(quote : str) -> discord.Embed:
     embed.add_field(name="Quote", value=quote, inline=False)
     
     return embed
+
+def get_playing_view(text : str, skipped = None):
+    embed = discord.Embed(
+        title="Now Playing",
+        description=text,
+        color=discord.Color.gold()
+    )
+    
+    if skipped:
+        embed.add_field(name="Skipped", value=skipped, inline=False)
+    
+    return embed
+
+def get_queue_view(queue: list, current: str | None = None):
+    embed = discord.Embed(
+        title="Audio Queue",
+        description="Current Queue",
+        color=discord.Color.blue()
+    )
+    
+    if current:
+        embed.add_field(name="Now Playing", value=current, inline=False)
+    
+    if not queue:
+        embed.add_field(name="Queue is empty", value="Add some audio to the queue!", inline=False)
+    else:
+        for index, audio in enumerate(queue):
+            embed.add_field(name=f"Track {index + 1}", value=audio.name, inline=False)
+    
+    return embed

@@ -1,11 +1,13 @@
 import discord
 import requests
+import asyncio
 import os
 from random import randint
 from dotenv import load_dotenv
 import subprocess
 from databases import database, server_warn, banned_word
-from views import send_target_view, send_help_view, send_meowjam_view, send_kayden_view
+from views import send_target_view, send_help_view, send_meowjam_view, send_kayden_view, get_playing_view, get_queue_view
+from audioqueue import audio, audio_queue
 
 # Constants for boolean values
 false = False
@@ -37,6 +39,9 @@ with open("txt_files\\meowjam_quotes.txt", "r") as file:
 
 with open("txt_files\\kayden_quotes.txt", "r") as file:
     kaydenList = file.readlines()
+    
+with open("txt_files\\audiohelp.txt", "r") as file:
+    audioHelp = file.readlines()
 
 #helper funtions
 def is_toilet_man(word : str) -> bool:
@@ -143,6 +148,13 @@ async def steamUserPlaying(interaction : discord.Interaction, steamid : str):
         await interaction.response.send_message("No user with that Id exists")
 
 #guild commands
+
+@tree.command(name="audiohelp", description="Get help with audio commands")
+@discord.app_commands.allowed_installs(guilds=true, users=false)
+@discord.app_commands.allowed_contexts(guilds=true, dms=false, private_channels=false)
+async def audio_help(interaction : discord.Interaction):
+    embed = send_help_view(audioHelp)
+    await interaction.response.send_message(embed=embed)
 
 #kick
 @tree.command(name="kick", description="kick a user from the server")
@@ -323,6 +335,183 @@ async def is_word_banned(interaction : discord.Interaction, word: str):
 async def remove_all_banned_words(interaction : discord.Interaction):
     db.banned_words_collection.delete_many({'server_id': interaction.guild.id})
     await interaction.response.send_message("All banned words have been removed from this server.", ephemeral=true)
+    
+#music commands
+
+audio_formats = ["mp3", "wav", "ogg", "flac", "aac", "m4a", "opus", "mov", "mp4", "webm"]
+
+def is_audio_file(filename: str) -> bool:
+    """Check if the file is an audio file based on its extension."""
+    return any(filename.lower().endswith(f".{fmt}") for fmt in audio_formats)
+
+def is_discord_audio_link(url: str) -> bool:
+    """Check if the URL is a valid Discord audio link."""
+    return url.startswith("https://cdn.discordapp.com/")
+
+def get_discord_name(url: str) -> str:
+    lastmark = url.rfind("?")
+    firstslash = url.find("/", 65)
+    return url[firstslash+1:lastmark]
+
+audioQueueDict : dict[int : audio_queue] = {}
+
+def play_next(guild_id : int):
+    """Play the next audio in the queue for the given guild."""
+    audio_queue = audioQueueDict.get(guild_id)
+    voice_client = discord.utils.get(client.voice_clients, guild__id=guild_id)
+    voice_channel = voice_client.channel
+    #leave the voice channel if the bot is the only one in it
+    if voice_client and len(voice_channel.members) == 1:
+        asyncio.run_coroutine_threadsafe(audio_queue.channel.send("Leaving voice channel as I am the only one here."), client.loop)
+        asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
+        return
+    if audio_queue is None or (audio_queue and audio_queue.is_empty()):
+        asyncio.run_coroutine_threadsafe(audio_queue.channel.send("Leaving voice channel as the queue is empty."), client.loop)
+        asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
+        return
+    if audio_queue and not audio_queue.is_empty():
+        next_audio = audio_queue.get_next_audio()
+        if next_audio:
+            if voice_client and not voice_client.is_playing() and not voice_client.is_paused():
+                source = discord.FFmpegPCMAudio(next_audio.video)
+                voice_client.play(source, after=lambda e: play_next(guild_id))
+
+async def play_audio(url : audio, interaction: discord.Interaction):
+    """Play audio in the voice channel."""
+    voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
+    
+    if voice_client == None:
+        voice_client = await interaction.user.voice.channel.connect()
+    elif voice_client.channel != interaction.user.voice.channel:
+        await voice_client.disconnect()
+        voice_client = await interaction.user.voice.channel.connect()
+    
+    if not voice_client.is_playing() and not voice_client.is_paused():
+        audio_queue = audioQueueDict.get(interaction.guild.id)
+        if audio_queue and not audio_queue.is_empty():
+            next_audio = audio_queue.get_next_audio()
+            if next_audio:
+                source = discord.FFmpegPCMAudio(next_audio.video)
+                voice_client.play(source, after=lambda e: play_next(interaction.guild.id))
+
+@tree.command(name="play", description="Play audio in a voice channel")
+@discord.app_commands.allowed_installs(guilds=true, users=false)
+@discord.app_commands.allowed_contexts(guilds=true, dms=false, private_channels=false)
+@discord.app_commands.describe(url="URL of the audio to play (must be a discord link)")
+async def play(interaction : discord.Interaction, url: str):
+    voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
+    
+    if interaction.user.voice is None:
+        await interaction.response.send_message("You must be in a voice channel to use this command.", ephemeral=True)
+        return
+   
+    try:
+        await interaction.response.defer(thinking=True)
+        
+        if not is_discord_audio_link(url):
+            await interaction.followup.send("The provided URL is not a valid Discord audio link.", ephemeral=True)
+            return
+        
+        file = audio(url=url, _type="discord", name=get_discord_name(url))
+        
+        if interaction.guild.id not in audioQueueDict:
+            audioQueueDict[interaction.guild.id] = audio_queue()
+        audioQueue = audioQueueDict[interaction.guild.id]
+        audioQueue.channel = interaction.channel
+        
+        if audioQueue.add_audio(file):
+            if voice_client is not None and (voice_client.is_playing() or voice_client.is_paused()):
+                await interaction.followup.send(f"Added {file.name} to the audio queue.", ephemeral=True)
+            else:
+                embed = get_playing_view(text=file.name)
+                await interaction.followup.send(embed=embed)
+                await play_audio(file, interaction)
+        else:
+            await interaction.followup.send("The audio queue is full. Please wait for the current audio to finish before adding more.", ephemeral=True)
+            return
+    except Exception as e:
+        print(f"Error in play command: {e}")
+        await interaction.followup.send("An error occurred while trying to play the audio. Please check the URL and try again.", ephemeral=True)
+
+@tree.command(name="skip", description="Skip the current audio in the voice channel")
+@discord.app_commands.allowed_installs(guilds=true, users=false)
+@discord.app_commands.allowed_contexts(guilds=true, dms=false, private_channels=false)
+@discord.app_commands.describe(position="Position in the queue to skip to (0 for next audio)")
+async def skip(interaction : discord.Interaction, position: int = 0):
+    voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
+    
+    await interaction.response.defer(thinking=True)
+    if voice_client and voice_client.is_connected():
+        audio_queue = audioQueueDict.get(interaction.guild.id)
+        
+        if audio_queue.is_empty():
+            await interaction.followup.send("The audio queue is empty.", ephemeral=True)
+            return
+        audio : 'audio' = audio_queue.pop_at_position(position)
+        voice_client.stop()
+        embed = get_playing_view(text=audio.name)
+        await interaction.followup.send(embed=embed)
+        await play_audio(audio, interaction)
+    else:
+        await interaction.followup.send("I am not connected to a voice channel.", ephemeral=True)
+        return   
+    
+@tree.command(name="pause", description="Pause the current audio in the voice channel")
+@discord.app_commands.allowed_installs(guilds=true, users=false)
+@discord.app_commands.allowed_contexts(guilds=true, dms=false, private_channels=false)
+async def pause(interaction : discord.Interaction):
+    voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
+    
+    if voice_client and voice_client.is_playing():
+        voice_client.pause()
+        await interaction.response.send_message("Paused the current audio.", ephemeral=True)
+    else:
+        await interaction.response.send_message("No audio is currently playing.", ephemeral=True)
+        
+@tree.command(name="resume", description="Resume the paused audio in the voice channel")
+@discord.app_commands.allowed_installs(guilds=true, users=false)
+@discord.app_commands.allowed_contexts(guilds=true, dms=false, private_channels=false)
+async def resume(interaction : discord.Interaction):
+    voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
+    
+    if voice_client and voice_client.is_paused():
+        voice_client.resume()
+        await interaction.response.send_message("Resumed the paused audio.", ephemeral=True)
+    else:
+        await interaction.response.send_message("No audio is currently paused.", ephemeral=True)
+        
+@tree.command(name="stop", description="Stop the current audio in the voice channel")
+@discord.app_commands.allowed_installs(guilds=true, users=false)
+@discord.app_commands.allowed_contexts(guilds=true, dms=false, private_channels=false)
+async def stop(interaction : discord.Interaction):
+    voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
+    
+    if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
+        voice_client.stop()
+        audio_queue = audioQueueDict.get(interaction.guild.id)
+        if audio_queue:
+            audio_queue.reset()
+        await interaction.response.send_message("Stopped the current audio and cleared the queue.", ephemeral=True)
+    else:
+        await interaction.response.send_message("No audio is currently playing or paused.", ephemeral=True)
+        
+@tree.command(name="queue", description="View the current audio queue")
+@discord.app_commands.allowed_installs(guilds=true, users=false)
+@discord.app_commands.allowed_contexts(guilds=true, dms=false, private_channels=false)
+async def queue(interaction : discord.Interaction):
+    voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
+    
+    if voice_client and voice_client.is_connected():
+        audio_queue = audioQueueDict.get(interaction.guild.id)
+        
+        if audio_queue and not audio_queue.is_empty():
+            current_audio = audio_queue.current.name if audio_queue.current else "None"
+            embed = get_queue_view(queue=audio_queue.queue, current=current_audio)
+            await interaction.response.send_message(embed=embed)
+        else:
+            await interaction.response.send_message("The audio queue is empty.", ephemeral=True)
+    else:
+        await interaction.response.send_message("I am not connected to a voice channel.", ephemeral=True)
 
 #message events
 
