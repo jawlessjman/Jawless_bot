@@ -54,7 +54,7 @@ async def on_ready():
     print(f"We have logged in as {client.user}")
     try:
         owner_user = client.get_user(owner)
-        await owner_user.send(f"{client.user.name} On, Debug mode is {'on' if debug else 'off'}")
+        await owner_user.send(f"{client.user.name} On, Debug mode is {'on' if debug else 'off'}", silent=True)
         synced = await tree.sync()
         print(f"synced {len(synced)} commands")
     except Exception as e:
