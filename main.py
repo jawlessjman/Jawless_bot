@@ -698,7 +698,7 @@ async def on_message(message : discord.Message):
         elif message.content.startswith("!debug"):
             global debug
             debug = not debug
-            await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}", ephemeral=True)
+            await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
     
     #scan message content
     try:
@@ -714,7 +714,6 @@ async def on_message(message : discord.Message):
             for attachment in message.attachments:
                 if db.is_word_banned(attachment.filename, message.guild.id):
                     await message.delete()
-                    await message.channel.send(f"{message.author.mention}, your attachment is banned and has been deleted.", ephemeral=True)
                     return
     except Exception as e:
         print(f"Error in on_message: {e}")
