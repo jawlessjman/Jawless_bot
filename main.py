@@ -699,6 +699,7 @@ async def on_message(message : discord.Message):
             global debug
             debug = not debug
             await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
+            return
     
     #scan message content
     try:
