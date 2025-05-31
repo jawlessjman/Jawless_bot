@@ -473,7 +473,7 @@ def play_next(guild_id : int, skipped: bool = False):
             if next_audio:
                 if voice_client and not voice_client.is_playing() and not voice_client.is_paused():
                     source = discord.FFmpegPCMAudio(next_audio.video)
-                    embed = get_playing_view(text=next_audio.name, title="Now Playing", skipped=skipped)
+                    embed = get_playing_view(song=next_audio.name, title="Now Playing", skipped=skipped)
                     asyncio.run_coroutine_threadsafe(audio_queue.channel.send(embed=embed), client.loop)
                     voice_client.play(source, after=lambda e: play_next(guild_id))
     except Exception as e:
@@ -535,7 +535,7 @@ async def play(interaction : discord.Interaction, url: str):
                 if voice_client is not None and (voice_client.is_playing() or voice_client.is_paused()):
                     await interaction.followup.send(f"Added {file.name} to the audio queue.", ephemeral=True)
                 else:
-                    embed = get_playing_view(text=file.name, title="Now Playing")
+                    embed = get_playing_view(song=file.name, title="Now Playing")
                     await interaction.followup.send(embed=embed)
                     await play_audio(file, interaction, False)
             else:
@@ -567,7 +567,7 @@ async def skip(interaction : discord.Interaction, position: int = 0):
                 return
             audio : 'audio' = audio_queue.pop_at_position(position)
             voice_client.stop()
-            embed = get_playing_view(text=audio.name)
+            embed = get_playing_view(song=audio.name, title="Now Playing", skipped=True)
             await interaction.followup.send(embed=embed)
             await play_audio(audio, interaction, True)
         else:
