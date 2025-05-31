@@ -460,13 +460,15 @@ def play_next(guild_id : int, skipped: bool = False):
         voice_client = discord.utils.get(client.voice_clients, guild__id=guild_id)
         voice_channel = voice_client.channel
         #leave the voice channel if the bot is the only one in it
+        message = None
         if voice_client and len(voice_channel.members) == 1:
-            asyncio.run_coroutine_threadsafe(audio_queue.channel.send("Leaving voice channel as I am the only one here."), client.loop)
-            asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
-            return
+            message = "Leaving voice channel as I am the only one here."
         if audio_queue is None or (audio_queue and audio_queue.is_empty()):
-            asyncio.run_coroutine_threadsafe(audio_queue.channel.send("Leaving voice channel as the queue is empty."), client.loop)
+            message = "Leaving voice channel as the queue is empty."
+        if message:
             asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
+            asyncio.run_coroutine_threadsafe(audio_queue.reset(), client.loop)
+            asyncio.run_coroutine_threadsafe(audio_queue.channel.send(message), client.loop)
             return
         if audio_queue and not audio_queue.is_empty():
             next_audio = audio_queue.get_next_audio()
@@ -496,10 +498,8 @@ async def play_audio(url : audio, interaction: discord.Interaction, skipped : bo
         if not voice_client.is_playing() and not voice_client.is_paused():
             audio_queue = audioQueueDict.get(interaction.guild.id)
             if audio_queue and not audio_queue.is_empty():
-                next_audio = audio_queue.get_next_audio()
-                if next_audio:
-                    source = discord.FFmpegPCMAudio(next_audio.video)
-                    voice_client.play(source, after=lambda e: play_next(interaction.guild.id, skipped=skipped))
+                source = discord.FFmpegPCMAudio(url.video)
+                voice_client.play(source, after=lambda e: play_next(interaction.guild.id, skipped=skipped))
     except Exception as e:
         print(f"Error in play_audio: {e}")
         await on_error(e)
