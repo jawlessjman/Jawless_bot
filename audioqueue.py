@@ -33,6 +33,8 @@ class audio_queue:
         """Add audio to the queue."""
         if len(self.queue) >= max_length:
             return False
+        if not self.current:
+            self.current = audio
         self.queue.append(audio)
         return True
     
