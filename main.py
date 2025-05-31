@@ -460,7 +460,7 @@ def play_next(guild_id : int, skipped: bool = False):
         voice_client = discord.utils.get(client.voice_clients, guild__id=guild_id)
         voice_channel = voice_client.channel
         #leave the voice channel if the bot is the only one in it
-        message = None
+        message : str | None = None
         if voice_client and len(voice_channel.members) == 1:
             message = "Leaving voice channel as I am the only one here."
         if audio_queue is None or (audio_queue and audio_queue.is_empty()):
@@ -480,7 +480,7 @@ def play_next(guild_id : int, skipped: bool = False):
                     voice_client.play(source, after=lambda e: play_next(guild_id))
     except Exception as e:
         print(f"Error in play_next: {e}")
-        asyncio.run_coroutine_threadsafe(on_error(e))
+        asyncio.run_coroutine_threadsafe(on_error(e), client.loop)
         asyncio.run_coroutine_threadsafe(audio_queue.channel.send("An error occurred while trying to play the next audio. Please try again."), client.loop)
         asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
         
