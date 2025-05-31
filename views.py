@@ -42,19 +42,22 @@ def send_kayden_view(quote : str) -> discord.Embed:
     
     return embed
 
-def get_playing_view(song : str, title : str, skipped : bool = False) -> discord.Embed:
+def get_playing_view(song : str, title : str, skipped : bool = False, loop : bool = False) -> discord.Embed:
     embed = discord.Embed(
         title=title,
         description=song,
         color=discord.Color.gold()
     )
     
+    if loop:
+        embed.add_field(name="Looping", value="Enabled", inline=False)
+    
     if skipped:
         embed.add_field(name="Skipped", value=skipped, inline=False)
     
     return embed
 
-def get_queue_view(queue: list, current: str | None = None):
+def get_queue_view(queue: list, current: str | None = None, loop: bool = False) -> discord.Embed:
     embed = discord.Embed(
         title="Audio Queue",
         description="Current Queue",
@@ -63,6 +66,9 @@ def get_queue_view(queue: list, current: str | None = None):
     
     if current:
         embed.add_field(name="Now Playing", value=current, inline=False)
+        
+    if loop:
+        embed.add_field(name="Looping", value="Enabled", inline=False)
     
     if not queue:
         embed.add_field(name="Queue is empty", value="Add some audio to the queue!", inline=False)
@@ -77,6 +83,15 @@ def basic_embed(title : str, description : str) -> discord.Embed:
         title=title,
         description=description,
         color=discord.Color.gold()
+    )
+    
+    return embed
+
+def error_embed(description: str) -> discord.Embed:
+    embed = discord.Embed(
+        title="Error",
+        description=description,
+        color=discord.Color.red()
     )
     
     return embed

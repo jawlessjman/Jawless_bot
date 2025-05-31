@@ -6,7 +6,7 @@ from random import randint
 from dotenv import load_dotenv
 import subprocess
 from databases import database, server_warn, banned_word
-from views import send_target_view, send_help_view, send_meowjam_view, send_kayden_view, get_playing_view, get_queue_view, basic_embed
+from views import send_target_view, send_help_view, send_meowjam_view, send_kayden_view, get_playing_view, get_queue_view, basic_embed, error_embed
 from audioqueue import audio, audio_queue
 
 load_dotenv()
@@ -46,7 +46,7 @@ def is_toilet_man(word : str) -> bool:
 async def on_error(e):
     if debug:
         await client.get_user(owner).send(f"An error occurred: `{e}`", silent=True)
-
+    
 #start up event
 
 @client.event
@@ -91,7 +91,8 @@ async def say(interaction : discord.Interaction, message : str):
     except Exception as e:
         print(f"Error in say command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to send your message. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to send your message.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #help
 @tree.command(name="help", description="lists the help menu")
@@ -104,7 +105,8 @@ async def help_menu(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in help_menu command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to get the help menu. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to get the help menu.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #meowjam
 @tree.command(name="meowjam", description="sends a random meowjam quote")
@@ -117,7 +119,8 @@ async def meowjam(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in meowjam command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to get a MeowJam quote. Please try again.", ephemeral=True)
+        embed= error_embed("An error occurred while trying to get a MeowJam quote.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #kayden
 @tree.command(name="kayden", description="sends a random kayden quote")
@@ -130,7 +133,8 @@ async def kayden(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in kayden command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to get a Kayden quote. Please try again.", ephemeral=True)
+        embed= error_embed("An error occurred while trying to get a Kayden quote.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #Rust command - uses steam api to see if caveman is playing rust, only works if caveman is online
 @tree.command(name = "rust", description="see if caveman is playing rust.")
@@ -153,7 +157,8 @@ async def rust(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in rust command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to check if Caveman is playing Rust. Please try again.", ephemeral=True)
+        embed= error_embed("An error occurred while trying to check if Caveman is playing Rust.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 #see what a steam user is playing given a steam id
 @tree.command(name = "steamuserplaying", description="Using someones steam id find out if they are playing a game")
@@ -179,7 +184,8 @@ async def steamUserPlaying(interaction : discord.Interaction, steamid : str):
     except Exception as e:
         print(f"Error in steamUserPlaying command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to get the user's game. Please try again.", ephemeral=True)
+        embed= error_embed("An error occurred while trying to check the user's game. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #guild commands
 
@@ -193,7 +199,8 @@ async def audio_help(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in audio_help command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to get audio help. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to get audio help.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #kick
 @tree.command(name="kick", description="kick a user from the server")
@@ -218,7 +225,8 @@ async def kick(interaction : discord.Interaction, user: discord.User, reason: st
     except Exception as e:
         print(f"Error in kick command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to kick the user. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to kick the user. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #ban
 @tree.command(name="ban", description="ban a user from the server")
@@ -243,7 +251,8 @@ async def ban(interaction : discord.Interaction, user: discord.User, reason: str
     except Exception as e:
         print(f"Error in ban command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to ban the user. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to ban the user. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #unban      
 @tree.command(name="unban", description="unban a user from the server")
@@ -264,7 +273,8 @@ async def unban(interaction : discord.Interaction, user: discord.User, reason: s
     except Exception as e:
         print(f"Error in unban command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to unban the user. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to unban the user. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #warn  
 @tree.command(name="warn", description="warn a user in the server")
@@ -289,7 +299,8 @@ async def warn(interaction : discord.Interaction, user: discord.User, reason: st
     except Exception as e:
         print(f"Error in warn command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to warn the user. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to warn the user. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 #remove warn
 @tree.command(name="removewarn", description="remove a warn from a user in the server")
@@ -315,7 +326,8 @@ async def remove_warn(interaction : discord.Interaction, user: discord.User, rea
     except Exception as e:
         print(f"Error in remove_warn command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to remove the warn. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to remove the warn. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 @tree.command(name="warns", description="check the number of warns a user has in the server")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -331,7 +343,8 @@ async def warns(interaction : discord.Interaction, user: discord.User):
     except Exception as e:
         print(f"Error in warns command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to check the user's warns. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to check the user's warns.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
     
 #purge messages
 @tree.command(name="purge", description="purge messages in the channel")
@@ -365,7 +378,8 @@ async def purge(interaction : discord.Interaction, amount: int):
     except Exception as e:
         print(f"Error in purge command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to purge messages. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to purge messages. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 #banned words commands
 
@@ -383,7 +397,8 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
     except Exception as e:
         print(f"Error in add_banned_word: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to add the banned word. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to add the banned word. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 @tree.command(name="removebannedword", description="Remove a banned word from the server")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -399,7 +414,8 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
     except Exception as e:
         print(f"Error in remove_banned_word: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to remove the banned word. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to remove the banned word. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @tree.command(name="iswordbanned", description="Check if a word is banned in the server")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -414,7 +430,8 @@ async def is_word_banned(interaction : discord.Interaction, word: str):
     except Exception as e:
         print(f"Error in is_word_banned: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while checking if the word is banned. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to check if the word is banned. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 #remove all banned words
 @tree.command(name="removeallbannedwords", description="Remove all banned words from the server")
@@ -428,7 +445,8 @@ async def remove_all_banned_words(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in remove_all_banned_words: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to remove all banned words. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to remove all banned words. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
     
 #music commands
 
@@ -475,12 +493,13 @@ def play_next(guild_id : int, skipped: bool = False):
             if next_audio:
                 if voice_client and not voice_client.is_playing() and not voice_client.is_paused():
                     source = discord.FFmpegPCMAudio(next_audio.video)
-                    embed = get_playing_view(song=next_audio.name, title="Now Playing", skipped=skipped)
+                    embed = get_playing_view(song=next_audio.name, title="Now Playing", skipped=skipped, loop=audio_queue.loop)
                     asyncio.run_coroutine_threadsafe(audio_queue.channel.send(embed=embed), client.loop)
                     voice_client.play(source, after=lambda e: play_next(guild_id))
     except Exception as e:
         print(f"Error in play_next: {e}")
-        asyncio.run_coroutine_threadsafe(audio_queue.channel.send("An error occurred while trying to play the next audio. Please try again."), client.loop)
+        embed = error_embed("An error occurred while trying to play the next audio.")
+        asyncio.run_coroutine_threadsafe(audio_queue.channel.send(embed=embed), client.loop)
         asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
         
 async def play_audio(url : audio, interaction: discord.Interaction, skipped : bool = False):
@@ -502,7 +521,8 @@ async def play_audio(url : audio, interaction: discord.Interaction, skipped : bo
     except Exception as e:
         print(f"Error in play_audio: {e}")
         await on_error(e)
-        await interaction.followup.send("An error occurred while trying to play the audio. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to play the audio.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @tree.command(name="play", description="Play audio in a voice channel")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -534,7 +554,7 @@ async def play(interaction : discord.Interaction, url: str):
                 if voice_client is not None and (voice_client.is_playing() or voice_client.is_paused()):
                     await interaction.followup.send(f"Added {file.name} to the audio queue.", ephemeral=True)
                 else:
-                    embed = get_playing_view(song=file.name, title="Now Playing")
+                    embed = get_playing_view(song=file.name, title="Now Playing", loop=audioQueue.loop)
                     await interaction.followup.send(embed=embed)
                     await play_audio(file, interaction, False)
             else:
@@ -543,11 +563,13 @@ async def play(interaction : discord.Interaction, url: str):
         except Exception as e:
             print(f"Error in play command: {e}")
             await on_error(e)
-            await interaction.followup.send("An error occurred while trying to play the audio. Please check the URL and try again.", ephemeral=True)
+            embed = error_embed("An error occurred while trying to play the audio. Please check the URL and try again.")
+            await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
         print(f"Error in play command: {e}")
         await on_error(e)
-        await interaction.followup.send("An error occurred while trying to play the audio. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to play the audio. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @tree.command(name="skip", description="Skip the current audio in the voice channel")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -566,7 +588,7 @@ async def skip(interaction : discord.Interaction, position: int = 0):
                 return
             audio : 'audio' = audio_queue.pop_at_position(position)
             voice_client.stop()
-            embed = get_playing_view(song=audio.name, title="Now Playing", skipped=True)
+            embed = get_playing_view(song=audio.name, title="Now Playing", skipped=True, loop=audio_queue.loop)
             await interaction.followup.send(embed=embed)
             await play_audio(audio, interaction, True)
         else:
@@ -574,7 +596,8 @@ async def skip(interaction : discord.Interaction, position: int = 0):
     except Exception as e:
         print(f"Error in skip command: {e}")
         await on_error(e)
-        await interaction.followup.send("An error occurred while trying to skip the audio. Please try again.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to skip the audio. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
     
 @tree.command(name="pause", description="Pause the current audio in the voice channel")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -585,13 +608,15 @@ async def pause(interaction : discord.Interaction):
         
         if voice_client and voice_client.is_playing():
             voice_client.pause()
-            await interaction.response.send_message("Paused the current audio.", ephemeral=True)
+            embed = basic_embed(title="Audio Paused", description="The current audio has been paused.")
+            await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message("No audio is currently playing.", ephemeral=True)
     except Exception as e:
         print(f"Error in pause command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to pause the audio.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to pause the audio. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 @tree.command(name="resume", description="Resume the paused audio in the voice channel")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -602,13 +627,15 @@ async def resume(interaction : discord.Interaction):
         
         if voice_client and voice_client.is_paused():
             voice_client.resume()
-            await interaction.response.send_message("Resumed the paused audio.", ephemeral=True)
+            embed = basic_embed(title="Audio Resumed", description="The paused audio has been resumed.")
+            await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message("No audio is currently paused.", ephemeral=True)
     except Exception as e:
         print(f"Error in resume command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to resume the audio.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to resume the audio. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 @tree.command(name="stop", description="Stop the current audio in the voice channel")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -622,13 +649,15 @@ async def stop(interaction : discord.Interaction):
             audio_queue = audioQueueDict.get(interaction.guild.id)
             if audio_queue:
                 audio_queue.reset()
-            await interaction.response.send_message("Stopped the current audio and cleared the queue.", ephemeral=True)
+            embed = basic_embed(title="Audio Stopped", description="The current audio has been stopped and the queue has been cleared.")
+            await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message("No audio is currently playing or paused.", ephemeral=True)
     except Exception as e:
         print(f"Error in stop command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to stop the audio.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to stop the audio. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 @tree.command(name="queue", description="View the current audio queue")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -642,7 +671,7 @@ async def queue(interaction : discord.Interaction):
             
             if audio_queue and not audio_queue.is_empty():
                 current_audio = audio_queue.current.name if audio_queue.current else "None"
-                embed = get_queue_view(queue=audio_queue.queue, current=current_audio)
+                embed = get_queue_view(queue=audio_queue.queue, current=current_audio, loop=audio_queue.loop)
                 await interaction.response.send_message(embed=embed)
             else:
                 await interaction.response.send_message("The audio queue is empty.", ephemeral=True)
@@ -651,7 +680,8 @@ async def queue(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in queue command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to retrieve the audio queue.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to retrieve the audio queue. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @tree.command(name="loop", description="Toggle looping the current audio in the voice channel")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
@@ -674,7 +704,8 @@ async def loop(interaction : discord.Interaction):
     except Exception as e:
         print(f"Error in loop command: {e}")
         await on_error(e)
-        await interaction.response.send_message("An error occurred while trying to toggle looping.", ephemeral=True)
+        embed = error_embed("An error occurred while trying to toggle looping. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #message events
 
