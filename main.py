@@ -666,7 +666,6 @@ async def loop(interaction : discord.Interaction):
             
             if audio_queue:
                 audio_queue.loop = not audio_queue.loop
-                audio_queue.loop = not audio_queue.loop  # Toggle the loop state
                 embed = basic_embed(title="Looping", description=f"Looping is now {'enabled' if audio_queue.loop else 'disabled'}.")
                 await interaction.response.send_message(embed=embed)
             else:
