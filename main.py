@@ -725,6 +725,11 @@ async def on_message(message : discord.Message):
             debug = not debug
             await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
             return
+        
+        elif message.content.startswith("!error"):
+            embed = error_embed("This is a test error message for debugging purposes.")
+            await message.channel.send(embed=embed)
+            return
     
     #scan message content
     try:
