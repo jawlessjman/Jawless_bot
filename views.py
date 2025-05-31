@@ -42,10 +42,10 @@ def send_kayden_view(quote : str) -> discord.Embed:
     
     return embed
 
-def get_playing_view(text : str, skipped = None):
+def get_playing_view(song : str, title : str, skipped : bool = False) -> discord.Embed:
     embed = discord.Embed(
-        title="Now Playing",
-        description=text,
+        title=title,
+        description=song,
         color=discord.Color.gold()
     )
     
@@ -58,7 +58,7 @@ def get_queue_view(queue: list, current: str | None = None):
     embed = discord.Embed(
         title="Audio Queue",
         description="Current Queue",
-        color=discord.Color.blue()
+        color=discord.Color.gold()
     )
     
     if current:
@@ -69,5 +69,14 @@ def get_queue_view(queue: list, current: str | None = None):
     else:
         for index, audio in enumerate(queue):
             embed.add_field(name=f"Track {index + 1}", value=audio.name, inline=False)
+    
+    return embed
+
+def basic_embed(title : str, description : str) -> discord.Embed:
+    embed = discord.Embed(
+        title=title,
+        description=description,
+        color=discord.Color.gold()
+    )
     
     return embed

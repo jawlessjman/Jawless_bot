@@ -38,6 +38,8 @@ class audio_queue:
     
     def get_next_audio(self) -> audio | None:
         """Get the next audio in the queue."""
+        if self.loop and self.current:
+            return self.current
         if self.queue:
             self.current = self.queue.pop(0)
             return self.current

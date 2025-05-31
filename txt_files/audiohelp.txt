@@ -3,3 +3,4 @@
 - /resume : resumes the current audio
 - /stop : stops the audio and clears the queue
 - /queue : displays the queue
+- /loop : loop the current audio
