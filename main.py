@@ -466,7 +466,7 @@ def play_next(guild_id : int, skipped: bool = False):
         if audio_queue is None or (audio_queue and audio_queue.is_empty()):
             message = "Leaving voice channel as the queue is empty."
         if message:
-            asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
+            voice_client.disconnect()
             asyncio.run_coroutine_threadsafe(audio_queue.reset(), client.loop)
             asyncio.run_coroutine_threadsafe(audio_queue.channel.send(message), client.loop)
             return
