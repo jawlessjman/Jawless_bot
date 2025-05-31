@@ -45,7 +45,7 @@ def is_toilet_man(word : str) -> bool:
 
 async def on_error(e):
     if debug:
-        await client.get_user(owner).send(f"An error occurred: `{e}`")
+        await client.get_user(owner).send(f"An error occurred: `{e}`", silent=True)
 
 #start up event
 
