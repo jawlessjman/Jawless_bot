@@ -1,19 +1,17 @@
 import discord
 import requests
-import asyncio
 import os
 from random import randint
 from dotenv import load_dotenv
-import subprocess
 from databases import database, server_warn, banned_word
-from views import send_target_view, send_help_view, send_meowjam_view, send_kayden_view, get_playing_view, get_queue_view, basic_embed, error_embed
-from audioqueue import audio, audio_queue
+from views import send_target_view, send_help_view, send_meowjam_view, send_kayden_view, error_embed
 
 load_dotenv()
 
 try:
     token = os.getenv('BOT_TOKEN')
     owner = int(os.getenv('OWNER_ID'))
+    steam_key= os.getenv('Steam_API_Key')
 except:
     print("Error loading environment variables")
     exit(1)
@@ -35,9 +33,6 @@ with open("txt_files\\meowjam_quotes.txt", "r") as file:
 
 with open("txt_files\\kayden_quotes.txt", "r") as file:
     kaydenList = file.readlines()
-    
-with open("txt_files\\audiohelp.txt", "r") as file:
-    audioHelp = file.readlines()
 
 #helper funtions
 def is_toilet_man(word : str) -> bool:
@@ -142,7 +137,7 @@ async def kayden(interaction : discord.Interaction):
 @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def rust(interaction : discord.Interaction):
     try:
-        response = requests.get("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=1402FDF4510AECCDD551943FAC302DC8&steamids=76561198968685475")
+        response = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_key}&steamids=76561198968685475")
         if response.status_code == 200:
             try:
                 x = response.json()
@@ -167,7 +162,7 @@ async def rust(interaction : discord.Interaction):
 @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def steamUserPlaying(interaction : discord.Interaction, steamid : str):
     try:
-        response = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=1402FDF4510AECCDD551943FAC302DC8&steamids={steamid}")
+        response = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_key}&steamids={steamid}")
         if response.status_code == 200:
             x = response.json()
             name = x["response"]["players"][0]["personaname"]
@@ -188,19 +183,6 @@ async def steamUserPlaying(interaction : discord.Interaction, steamid : str):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #guild commands
-
-@tree.command(name="audiohelp", description="Get help with audio commands")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-async def audio_help(interaction : discord.Interaction):
-    try:
-        embed = send_help_view(audioHelp)
-        await interaction.response.send_message(embed=embed)
-    except Exception as e:
-        print(f"Error in audio_help command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to get audio help.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #kick
 @tree.command(name="kick", description="kick a user from the server")
@@ -447,265 +429,6 @@ async def remove_all_banned_words(interaction : discord.Interaction):
         await on_error(e)
         embed = error_embed("An error occurred while trying to remove all banned words. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
-    
-#music commands
-
-audio_formats = ["mp3", "wav", "ogg", "flac", "aac", "m4a", "opus", "mov", "mp4", "webm"]
-
-def is_audio_file(filename: str) -> bool:
-    """Check if the file is an audio file based on its extension."""
-    for x in audio_formats:
-        if x in filename:
-            return True
-    return False
-    #return any(filename.lower().endswith(f".{fmt}") for fmt in audio_formats)
-
-def is_discord_audio_link(url: str) -> bool:
-    """Check if the URL is a valid Discord audio link."""
-    return url.startswith("https://cdn.discordapp.com/") and is_audio_file(url.lower())
-
-def get_discord_name(url: str) -> str:
-    lastmark = url.rfind("?")
-    firstslash = url.find("/", 65)
-    return url[firstslash+1:lastmark]
-
-audioQueueDict : dict[int : audio_queue] = {}
-
-def play_next(guild_id : int, skipped: bool = False):
-    """Play the next audio in the queue for the given guild."""
-    try:
-        audio_queue = audioQueueDict.get(guild_id)
-        voice_client = discord.utils.get(client.voice_clients, guild__id=guild_id)
-        voice_channel = voice_client.channel
-        #leave the voice channel if the bot is the only one in it
-        message : str | None = None
-        if voice_client and len(voice_channel.members) == 1:
-            message = "Leaving voice channel as I am the only one here."
-        if audio_queue is None or (audio_queue and audio_queue.is_empty()):
-            message = "Leaving voice channel as the queue is empty."
-        if message:
-            asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
-            audio_queue.reset()
-            asyncio.run_coroutine_threadsafe(audio_queue.channel.send(message), client.loop)
-            return
-        if audio_queue and not audio_queue.is_empty():
-            next_audio = audio_queue.get_next_audio()
-            if next_audio:
-                if voice_client and not voice_client.is_playing() and not voice_client.is_paused():
-                    source = discord.FFmpegPCMAudio(next_audio.video)
-                    embed = get_playing_view(song=next_audio.name, title="Now Playing", skipped=skipped, loop=audio_queue.loop)
-                    asyncio.run_coroutine_threadsafe(audio_queue.channel.send(embed=embed), client.loop)
-                    voice_client.play(source, after=lambda e: play_next(guild_id))
-    except Exception as e:
-        print(f"Error in play_next: {e}")
-        embed = error_embed("An error occurred while trying to play the next audio.")
-        asyncio.run_coroutine_threadsafe(audio_queue.channel.send(embed=embed), client.loop)
-        asyncio.run_coroutine_threadsafe(voice_client.disconnect(), client.loop)
-        
-async def play_audio(url : audio, interaction: discord.Interaction, skipped : bool = False):
-    """Play audio in the voice channel."""
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        if voice_client == None:
-            voice_client = await interaction.user.voice.channel.connect()
-        elif voice_client.channel != interaction.user.voice.channel:
-            await voice_client.disconnect()
-            voice_client = await interaction.user.voice.channel.connect()
-        
-        if not voice_client.is_playing() and not voice_client.is_paused():
-            audio_queue = audioQueueDict.get(interaction.guild.id)
-            if audio_queue and not audio_queue.is_empty():
-                source = discord.FFmpegPCMAudio(url.video)
-                voice_client.play(source, after=lambda e: play_next(interaction.guild.id, skipped=skipped))
-    except Exception as e:
-        print(f"Error in play_audio: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to play the audio.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-@tree.command(name="play", description="Play audio in a voice channel")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-@discord.app_commands.describe(url="URL of the audio to play (must be a discord link)")
-async def play(interaction : discord.Interaction, url: str):
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        if interaction.user.voice is None:
-            await interaction.response.send_message("You must be in a voice channel to use this command.", ephemeral=True)
-            return
-    
-        try:
-            await interaction.response.defer(thinking=True)
-            
-            if not is_discord_audio_link(url):
-                await interaction.followup.send("The provided URL is not a valid Discord audio link.", ephemeral=True)
-                return
-            
-            file = audio(url=url, _type="discord", name=get_discord_name(url))
-            
-            if interaction.guild.id not in audioQueueDict:
-                audioQueueDict[interaction.guild.id] = audio_queue()
-            audioQueue = audioQueueDict[interaction.guild.id]
-            audioQueue.channel = interaction.channel
-            
-            if audioQueue.add_audio(file):
-                if voice_client is not None and (voice_client.is_playing() or voice_client.is_paused()):
-                    await interaction.followup.send(f"Added {file.name} to the audio queue.", ephemeral=True)
-                else:
-                    embed = get_playing_view(song=file.name, title="Now Playing", loop=audioQueue.loop)
-                    await interaction.followup.send(embed=embed)
-                    await play_audio(file, interaction, False)
-            else:
-                await interaction.followup.send("The audio queue is full. Please wait for the current audio to finish before adding more.", ephemeral=True)
-                return
-        except Exception as e:
-            print(f"Error in play command: {e}")
-            await on_error(e)
-            embed = error_embed("An error occurred while trying to play the audio. Please check the URL and try again.")
-            await interaction.followup.send(embed=embed, ephemeral=True)
-    except Exception as e:
-        print(f"Error in play command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to play the audio. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-@tree.command(name="skip", description="Skip the current audio in the voice channel")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-@discord.app_commands.describe(position="Position in the queue to skip to (0 for next audio)")
-async def skip(interaction : discord.Interaction, position: int = 0):
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        await interaction.response.defer(thinking=True)
-        if voice_client and voice_client.is_connected():
-            audio_queue = audioQueueDict.get(interaction.guild.id)
-            
-            if audio_queue.is_empty():
-                await interaction.followup.send("The audio queue is empty.", ephemeral=True)
-                return
-            audio : 'audio' = audio_queue.pop_at_position(position)
-            voice_client.stop()
-            embed = get_playing_view(song=audio.name, title="Now Playing", skipped=True, loop=audio_queue.loop)
-            await interaction.followup.send(embed=embed)
-            await play_audio(audio, interaction, True)
-        else:
-            await interaction.followup.send("I am not connected to a voice channel.", ephemeral=True)
-    except Exception as e:
-        print(f"Error in skip command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to skip the audio. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-    
-@tree.command(name="pause", description="Pause the current audio in the voice channel")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-async def pause(interaction : discord.Interaction):
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        if voice_client and voice_client.is_playing():
-            voice_client.pause()
-            embed = basic_embed(title="Audio Paused", description="The current audio has been paused.")
-            await interaction.response.send_message(embed=embed)
-        else:
-            await interaction.response.send_message("No audio is currently playing.", ephemeral=True)
-    except Exception as e:
-        print(f"Error in pause command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to pause the audio. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-@tree.command(name="resume", description="Resume the paused audio in the voice channel")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-async def resume(interaction : discord.Interaction):
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        if voice_client and voice_client.is_paused():
-            voice_client.resume()
-            embed = basic_embed(title="Audio Resumed", description="The paused audio has been resumed.")
-            await interaction.response.send_message(embed=embed)
-        else:
-            await interaction.response.send_message("No audio is currently paused.", ephemeral=True)
-    except Exception as e:
-        print(f"Error in resume command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to resume the audio. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-@tree.command(name="stop", description="Stop the current audio in the voice channel")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-async def stop(interaction : discord.Interaction):
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
-            voice_client.stop()
-            audio_queue = audioQueueDict.get(interaction.guild.id)
-            if audio_queue:
-                audio_queue.reset()
-            embed = basic_embed(title="Audio Stopped", description="The current audio has been stopped and the queue has been cleared.")
-            await interaction.response.send_message(embed=embed)
-        else:
-            await interaction.response.send_message("No audio is currently playing or paused.", ephemeral=True)
-    except Exception as e:
-        print(f"Error in stop command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to stop the audio. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-@tree.command(name="queue", description="View the current audio queue")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-async def queue(interaction : discord.Interaction):
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        if voice_client and voice_client.is_connected():
-            audio_queue = audioQueueDict.get(interaction.guild.id)
-            
-            if audio_queue and not audio_queue.is_empty():
-                current_audio = audio_queue.current.name if audio_queue.current else "None"
-                embed = get_queue_view(queue=audio_queue.queue, current=current_audio, loop=audio_queue.loop)
-                await interaction.response.send_message(embed=embed)
-            else:
-                await interaction.response.send_message("The audio queue is empty.", ephemeral=True)
-        else:
-            await interaction.response.send_message("I am not connected to a voice channel.", ephemeral=True)
-    except Exception as e:
-        print(f"Error in queue command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to retrieve the audio queue. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-@tree.command(name="loop", description="Toggle looping the current audio in the voice channel")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-async def loop(interaction : discord.Interaction):
-    try:
-        voice_client : discord.VoiceClient = discord.utils.get(client.voice_clients, guild=interaction.guild)
-        
-        if voice_client and voice_client.is_connected():
-            audio_queue = audioQueueDict.get(interaction.guild.id)
-            
-            if audio_queue:
-                audio_queue.loop = not audio_queue.loop
-                embed = basic_embed(title="Looping", description=f"Looping is now {'enabled' if audio_queue.loop else 'disabled'}.")
-                await interaction.response.send_message(embed=embed)
-            else:
-                await interaction.response.send_message("No audio queue found for this server.", ephemeral=True)
-        else:
-            await interaction.response.send_message("I am not connected to a voice channel.", ephemeral=True)
-    except Exception as e:
-        print(f"Error in loop command: {e}")
-        await on_error(e)
-        embed = error_embed("An error occurred while trying to toggle looping. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #message events
 
@@ -715,20 +438,10 @@ async def on_message(message : discord.Message):
         return
 
     if message.author.id == owner:
-        if message.content.startswith("!restart"):
-            await message.channel.send("Restarting bot...")
-            subprocess.run(["restart.bat"], shell=True)
-            return
-            
-        elif message.content.startswith("!debug"):
+        if message.content.startswith("!debug"):
             global debug
             debug = not debug
             await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
-            return
-        
-        elif message.content.startswith("!error"):
-            embed = error_embed("This is a test error message for debugging purposes.")
-            await message.channel.send(embed=embed)
             return
     
     #scan message content

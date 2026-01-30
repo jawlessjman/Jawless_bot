@@ -1,6 +1,0 @@
-- /play : plays discord audio or adds it to the queue
-- /pause : pauses the current audio
-- /resume : resumes the current audio
-- /stop : stops the audio and clears the queue
-- /queue : displays the queue
-- /loop : loop the current audio

@@ -1,4 +1,6 @@
 from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
 
 class server_warn:
     def __init__(self, server_id: int, user_id: int):
@@ -24,7 +26,7 @@ class banned_word:
 class database:
     def __init__(self):
         try:
-            self.client = MongoClient('mongodb://localhost:27017/')
+            self.client = MongoClient(os.getenv('MongoDB_URI'))
             self.db = self.client['my_database']
             self.warns_collection = self.db['server_warns']
             self.banned_words_collection = self.db['banned_words']
