@@ -5,6 +5,7 @@ from random import randint
 from dotenv import load_dotenv
 from databases import database, server_warn, banned_word
 from views import send_target_view, send_help_view, send_meowjam_view, send_kayden_view, error_embed
+from help_text import help_list, kayden_quote_list, meowjam_quote_list
 
 load_dotenv()
 
@@ -24,15 +25,6 @@ client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client=client)
 
 db = database()
-
-with open("txt_files\\help.txt", "r") as file:
-    helpList = file.readlines()
-
-with open("txt_files\\meowjam_quotes.txt", "r") as file:
-    meowjamList = file.readlines()
-
-with open("txt_files\\kayden_quotes.txt", "r") as file:
-    kaydenList = file.readlines()
 
 #helper funtions
 def is_toilet_man(word : str) -> bool:
@@ -95,7 +87,7 @@ async def say(interaction : discord.Interaction, message : str):
 @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def help_menu(interaction : discord.Interaction):
     try:
-        embed = send_help_view(helpList)
+        embed = send_help_view(help_list)
         await interaction.response.send_message(embed=embed)
     except Exception as e:
         print(f"Error in help_menu command: {e}")
@@ -109,7 +101,7 @@ async def help_menu(interaction : discord.Interaction):
 @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def meowjam(interaction : discord.Interaction):
     try:
-        embed = send_meowjam_view(quote=meowjamList[randint(0, len(meowjamList) - 1)])
+        embed = send_meowjam_view(quote=meowjam_quote_list[randint(0, len(meowjam_quote_list) - 1)])
         await interaction.response.send_message(embed=embed)
     except Exception as e:
         print(f"Error in meowjam command: {e}")
@@ -123,7 +115,7 @@ async def meowjam(interaction : discord.Interaction):
 @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def kayden(interaction : discord.Interaction):
     try:
-        embed = send_kayden_view(quote=kaydenList[randint(0, len(kaydenList) - 1)])
+        embed = send_kayden_view(quote=kayden_quote_list[randint(0, len(kayden_quote_list) - 1)])
         await interaction.response.send_message(embed=embed)
     except Exception as e:
         print(f"Error in kayden command: {e}")
