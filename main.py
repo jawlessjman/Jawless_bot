@@ -30,9 +30,9 @@ db = database()
 def is_toilet_man(word : str) -> bool:
     return "skibidi" in word.lower()
 
-async def on_error(e):
+async def on_error(e, function_name : str = "Unknown"):
     if debug:
-        await client.get_user(owner).send(f"An error occurred: `{e}`", silent=True)
+        await client.get_user(owner).send(f"An error occurred in function '{function_name}': `{e}`", silent=True)
     
 #start up event
 
@@ -58,7 +58,7 @@ async def hello(interaction : discord.Interaction):
         await interaction.response.send_message(f"Hey, {interaction.user.mention}")
     except Exception as e:
         print(f"Error in hello command: {e}")
-        await on_error(e)
+        await on_error(e, "Hello Command")
         await interaction.response.send_message("An error occurred while trying to say hello. Please try again.", ephemeral=True)
 
 #say
@@ -77,7 +77,7 @@ async def say(interaction : discord.Interaction, message : str):
         await interaction.response.send_message(message)
     except Exception as e:
         print(f"Error in say command: {e}")
-        await on_error(e)
+        await on_error(e, "Say Command")
         embed = error_embed("An error occurred while trying to send your message.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -91,7 +91,7 @@ async def help_menu(interaction : discord.Interaction):
         await interaction.response.send_message(embed=embed)
     except Exception as e:
         print(f"Error in help_menu command: {e}")
-        await on_error(e)
+        await on_error(e, "Help Menu Command")
         embed = error_embed("An error occurred while trying to get the help menu.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -105,7 +105,7 @@ async def meowjam(interaction : discord.Interaction):
         await interaction.response.send_message(embed=embed)
     except Exception as e:
         print(f"Error in meowjam command: {e}")
-        await on_error(e)
+        await on_error(e, "MeowJam Command")
         embed= error_embed("An error occurred while trying to get a MeowJam quote.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -119,7 +119,7 @@ async def kayden(interaction : discord.Interaction):
         await interaction.response.send_message(embed=embed)
     except Exception as e:
         print(f"Error in kayden command: {e}")
-        await on_error(e)
+        await on_error(e, "Kayden Command")
         embed= error_embed("An error occurred while trying to get a Kayden quote.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -143,7 +143,7 @@ async def rust(interaction : discord.Interaction):
                 await interaction.response.send_message("Caveman is not playing any games")
     except Exception as e:
         print(f"Error in rust command: {e}")
-        await on_error(e)
+        await on_error(e, "Rust Command")
         embed= error_embed("An error occurred while trying to check if Caveman is playing Rust.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         
@@ -170,7 +170,7 @@ async def steamUserPlaying(interaction : discord.Interaction, steamid : str):
             await interaction.response.send_message("No user with that Id exists")
     except Exception as e:
         print(f"Error in steamUserPlaying command: {e}")
-        await on_error(e)
+        await on_error(e, "steamUserPlaying Command")
         embed= error_embed("An error occurred while trying to check the user's game. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -198,7 +198,7 @@ async def kick(interaction : discord.Interaction, user: discord.User, reason: st
             await interaction.response.send_message("I do not have permission to kick this user.", ephemeral=True)
     except Exception as e:
         print(f"Error in kick command: {e}")
-        await on_error(e)
+        await on_error(e, "kick command")
         embed = error_embed("An error occurred while trying to kick the user. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -224,7 +224,7 @@ async def ban(interaction : discord.Interaction, user: discord.User, reason: str
             await interaction.response.send_message("I do not have permission to ban this user.", ephemeral=True)
     except Exception as e:
         print(f"Error in ban command: {e}")
-        await on_error(e)
+        await on_error(e, "ban command")
         embed = error_embed("An error occurred while trying to ban the user. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -246,7 +246,7 @@ async def unban(interaction : discord.Interaction, user: discord.User, reason: s
             await interaction.response.send_message("I do not have permission to unban this user.", ephemeral=True)
     except Exception as e:
         print(f"Error in unban command: {e}")
-        await on_error(e)
+        await on_error(e, "unban command")
         embed = error_embed("An error occurred while trying to unban the user. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -272,7 +272,7 @@ async def warn(interaction : discord.Interaction, user: discord.User, reason: st
             await interaction.response.send_message("I do not have permission to warn this user.", ephemeral=True)
     except Exception as e:
         print(f"Error in warn command: {e}")
-        await on_error(e)
+        await on_error(e, "warn command")
         embed = error_embed("An error occurred while trying to warn the user. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         
@@ -299,7 +299,7 @@ async def remove_warn(interaction : discord.Interaction, user: discord.User, rea
             await interaction.response.send_message("I do not have permission to remove a warn from this user.", ephemeral=True)
     except Exception as e:
         print(f"Error in remove_warn command: {e}")
-        await on_error(e)
+        await on_error(e, "remove_warn command")
         embed = error_embed("An error occurred while trying to remove the warn. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         
@@ -316,7 +316,7 @@ async def warns(interaction : discord.Interaction, user: discord.User):
             await interaction.response.send_message(f"{user.mention} has no warns in this server.")
     except Exception as e:
         print(f"Error in warns command: {e}")
-        await on_error(e)
+        await on_error(e, "warns command")
         embed = error_embed("An error occurred while trying to check the user's warns.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
@@ -351,7 +351,7 @@ async def purge(interaction : discord.Interaction, amount: int):
             await interaction.response.send_message("I do not have permission to purge messages in this channel.", ephemeral=True)
     except Exception as e:
         print(f"Error in purge command: {e}")
-        await on_error(e)
+        await on_error(e, "purge command")
         embed = error_embed("An error occurred while trying to purge messages. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         
@@ -370,7 +370,7 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
             await interaction.response.send_message(f"is already banned in this server.", ephemeral=True)
     except Exception as e:
         print(f"Error in add_banned_word: {e}")
-        await on_error(e)
+        await on_error(e, "add_banned_word")
         embed = error_embed("An error occurred while trying to add the banned word. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         
@@ -387,7 +387,7 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
             await interaction.response.send_message(f"is not banned in this server.", ephemeral=True)
     except Exception as e:
         print(f"Error in remove_banned_word: {e}")
-        await on_error(e)
+        await on_error(e, "remove_banned_word")
         embed = error_embed("An error occurred while trying to remove the banned word. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -403,7 +403,7 @@ async def is_word_banned(interaction : discord.Interaction, word: str):
             await interaction.response.send_message(f"is not banned in this server.", ephemeral=True)
     except Exception as e:
         print(f"Error in is_word_banned: {e}")
-        await on_error(e)
+        await on_error(e, "is_word_banned")
         embed = error_embed("An error occurred while trying to check if the word is banned. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
         
@@ -418,7 +418,7 @@ async def remove_all_banned_words(interaction : discord.Interaction):
         await interaction.response.send_message("All banned words have been removed from this server.", ephemeral=True)
     except Exception as e:
         print(f"Error in remove_all_banned_words: {e}")
-        await on_error(e)
+        await on_error(e, "remove_all_banned_words")
         embed = error_embed("An error occurred while trying to remove all banned words. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -453,6 +453,6 @@ async def on_message(message : discord.Message):
                     return
     except Exception as e:
         print(f"Error in on_message: {e}")
-        await on_error(e)
+        await on_error(e, "on_message")
 
 client.run(token)
