@@ -31,8 +31,10 @@ def is_toilet_man(word : str) -> bool:
     return "skibidi" in word.lower()
 
 async def on_error(e, function_name : str = "Unknown"):
+    error_message = f"An error occurred in function '{function_name}': `{e}`"
+    print(error_message)
     if debug:
-        await client.get_user(owner).send(f"An error occurred in function '{function_name}': `{e}`", silent=True)
+        await client.get_user(owner).send(error_message, silent=True)
     
 #start up event
 
