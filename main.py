@@ -125,29 +125,34 @@ async def kayden(interaction : discord.Interaction):
         embed= error_embed("An error occurred while trying to get a Kayden quote.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+async def steamUserPlaying(steamid : str) -> str | bool:
+    try:
+        response = await requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_key}&steamids={steamid}")
+        if response.status_code == 200:
+            x = response.json()
+            if "response" not in x or "players" not in x["response"] or len(x["response"]["players"]) == 0:
+                return "No user with that Id exists", True
+            name = x["response"]["players"][0]["personaname"]
+            try:
+                y = x["response"]["players"]
+                j = y[0]["gameextrainfo"]
+    
+                return f"{name} is playing {j}"
+            except:
+                return f"{name} is not playing anything"
+        else:
+            return "Failed to fetch data from Steam API", True
+    except Exception as e:
+        await on_error(e, "steamUserPlaying Command")
+        return "There was an error retrieving the user's game status.", True
+
 #Rust command - uses steam api to see if caveman is playing rust, only works if caveman is online
 @tree.command(name = "rust", description="see if caveman is playing rust.")
 @discord.app_commands.allowed_installs(guilds=True, users=True)
 @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def rust(interaction : discord.Interaction):
-    try:
-        response = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_key}&steamids=76561198968685475")
-        if response.status_code == 200:
-            try:
-                x = response.json()
-                y = x["response"]["players"]
-                if y[0]["gameextrainfo"] == "Rust":
-                    j = y[0]["gameextrainfo"]
-                    await interaction.response.send_message(f"Caveman is playing Rust")
-                else:
-                    await interaction.response.send_message(f"Caveman is playing something else not rust, he is playing {j}")
-            except:
-                await interaction.response.send_message("Caveman is not playing any games")
-    except Exception as e:
-        print(f"Error in rust command: {e}")
-        await on_error(e, "Rust Command")
-        embed= error_embed("An error occurred while trying to check if Caveman is playing Rust.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+    result = await steamUserPlaying("76561198968685475")
+    await interaction.response.send_message(result[0], ephemeral=result[1] if isinstance(result, tuple) else False)
         
 #see what a steam user is playing given a steam id
 @tree.command(name = "steamuserplaying", description="Using someones steam id find out if they are playing a game")
@@ -155,26 +160,8 @@ async def rust(interaction : discord.Interaction):
 @discord.app_commands.describe(steamid = "The steam id of the user you want to see")
 @discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def steamUserPlaying(interaction : discord.Interaction, steamid : str):
-    try:
-        response = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_key}&steamids={steamid}")
-        if response.status_code == 200:
-            x = response.json()
-            name = x["response"]["players"][0]["personaname"]
-            try:
-                y = x["response"]["players"]
-                j = y[0]["gameextrainfo"]
-    
-                    
-                await interaction.response.send_message(f"{name} is playing {j}")
-            except:
-                await interaction.response.send_message(f"{name} is not playing anything")
-        else:
-            await interaction.response.send_message("No user with that Id exists")
-    except Exception as e:
-        print(f"Error in steamUserPlaying command: {e}")
-        await on_error(e, "steamUserPlaying Command")
-        embed= error_embed("An error occurred while trying to check the user's game. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+    result = await steamUserPlaying(steamid)
+    await interaction.response.send_message(result[0], ephemeral=result[1] if isinstance(result, tuple) else False)
 
 #guild commands
 
