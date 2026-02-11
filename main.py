@@ -518,6 +518,8 @@ async def on_message_edit(before : discord.Message, after : discord.Message):
             embed = discord.Embed(title="Message Edited", description=f"{before.author.mention} edited a message in {before.channel.mention}", color=discord.Color.orange())
             embed.add_field(name="Before", value=before.content if before.content else "No content", inline=False)
             embed.add_field(name="After", value=after.content if after.content else "No content", inline=False)
+            embed.add_field(name="Jump to Message", value=f"[Click Here]({after.jump_url})", inline=False)
+            embed.add_field(name="Edited At", value=after.edited_at if after.edited_at else "Unknown", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_message_edit")
@@ -539,6 +541,7 @@ async def on_message_delete(message : discord.Message):
         if audit_channel:
             embed = discord.Embed(title="Message Deleted", description=f"{message.author.mention} deleted a message in {message.channel.mention}", color=discord.Color.red())
             embed.add_field(name="Content", value=message.content if message.content else "No content", inline=False)
+            embed.add_field(name="Deleted At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_message_delete")
@@ -559,6 +562,7 @@ async def on_message_bulk_delete(messages : list[discord.Message]):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Bulk Message Delete", description=f"{len(messages)} messages were deleted in {messages[0].channel.mention}", color=discord.Color.red())
+            embed.add_field(name="Deleted At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_message_bulk_delete")
@@ -576,6 +580,8 @@ async def on_member_remove(member : discord.Member):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Left", description=f"{member.mention} has left the server.", color=discord.Color.red())
+            embed.add_field(name="Joined At", value=member.joined_at if member.joined_at else "Unknown", inline=False)
+            embed.add_field(name="Left At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_remove")
@@ -602,12 +608,13 @@ async def on_member_update(before, after):
                 embed.add_field(name="Roles Changed", value=f"Roles changed in {after.mention}", inline=False)
             if before.avatar != after.avatar:
                 embed.add_field(name="Avatar Changed", value=f"{after.mention} changed their avatar.", inline=False)
+            embed.add_field(name="Updated At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_update")
 
 @client.event 
-async def on_member_ban(guild : discord.Guild, user : discord.User):
+async def on_member_ban(guild : discord.Guild, user : discord.Member):
     result = get_server_settings(guild.id)
     if result == None:
         return
@@ -619,6 +626,8 @@ async def on_member_ban(guild : discord.Guild, user : discord.User):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Banned", description=f"{user.mention} has been banned from the server.", color=discord.Color.red())
+            embed.add_field(name="Member since", value=user.joined_at if user.joined_at else "Unknown", inline=False)
+            embed.add_field(name="Banned At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_ban")
@@ -636,6 +645,7 @@ async def on_member_unban(guild : discord.Guild, user : discord.User):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Unbanned", description=f"{user.mention} has been unbanned from the server.", color=discord.Color.green())
+            embed.add_field(name="Unbanned At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_unban")
