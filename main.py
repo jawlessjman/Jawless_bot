@@ -482,7 +482,7 @@ async def remove_all_banned_words(interaction : discord.Interaction):
         embed = error_embed("An error occurred while trying to remove all banned words. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-#message events
+#client events
 
 cached_server_settings = {}
 
@@ -587,7 +587,7 @@ async def on_member_remove(member : discord.Member):
         await on_error_custom(e, "on_member_remove")
 
 @client.event
-async def on_member_update(before, after):
+async def on_member_update(before : discord.Member, after : discord.Member):
     if before.guild is None:
         return
 
@@ -602,10 +602,20 @@ async def on_member_update(before, after):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Updated", description=f"{before.mention} was updated in {after.guild.name}", color=discord.Color.blue())
+            if before.name != after.name:
+                embed.add_field(name="Username Changed", value=f"From: {before.name}\nTo: {after.name}", inline=False)
             if before.nick != after.nick:
                 embed.add_field(name="Nickname Changed", value=f"From: {before.nick}\nTo: {after.nick}", inline=False)
             if before.roles != after.roles:
                 embed.add_field(name="Roles Changed", value=f"Roles changed in {after.mention}", inline=False)
+                before_roles = set(before.roles)
+                after_roles = set(after.roles)
+                added_roles = after_roles - before_roles
+                removed_roles = before_roles - after_roles
+                if added_roles:
+                    embed.add_field(name="Roles Added", value=", ".join(role.name for role in added_roles), inline=False)
+                if removed_roles:
+                    embed.add_field(name="Roles Removed", value=", ".join(role.name for role in removed_roles), inline=False)
             if before.avatar != after.avatar:
                 embed.add_field(name="Avatar Changed", value=f"{after.mention} changed their avatar.", inline=False)
             embed.add_field(name="Updated At", value=discord.utils.utcnow(), inline=False)
