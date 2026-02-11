@@ -2,6 +2,18 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 
+class server_setting:
+    def __init__(self, server_id: int, auto_moderation: bool = False, audit_channel: int = None):
+        self.server_id : int = server_id
+        self.auto_moderation : bool = auto_moderation
+        self.audit_channel : int = audit_channel
+
+    def from_dict(data: dict):
+        instance = server_setting(data['server_id'])
+        instance.auto_moderation = data.get('auto_moderation', False)
+        instance.audit_channel = data.get('audit_channel', None)
+        return instance
+
 class server_warn:
     def __init__(self, server_id: int, user_id: int):
         self.server_id = server_id
@@ -30,12 +42,75 @@ class database:
             self.db = self.client['my_database']
             self.warns_collection = self.db['server_warns']
             self.banned_words_collection = self.db['banned_words']
+            self.server_settings_collection = self.db['server_settings']
         except Exception as e:
             print(f"Error connecting to MongoDB: {e}")
             self.client = None
             self.db = None
             self.warns_collection = None
             self.banned_words_collection = None
+            self.server_settings_collection = None
+
+    def add_server_setting(self, setting: server_setting) -> bool:
+        try:
+            existing_setting = self.server_settings_collection.find_one({
+                'server_id': setting.server_id
+            })
+            if existing_setting:
+                self.server_settings_collection.update_one(
+                    {'_id': existing_setting['_id']},
+                    {'$set': {
+                        'auto_moderation': setting.auto_moderation,
+                        'audit_channel': setting.audit_channel
+                    }}
+                )
+                return True
+            setting_data = {
+                'server_id': setting.server_id,
+                'auto_moderation': setting.auto_moderation,
+                'audit_channel': setting.audit_channel
+            }
+            self.server_settings_collection.insert_one(setting_data)
+            return True
+        except Exception as e:
+            print(f"Error adding server setting: {e}")
+            return False
+        
+    def remove_server_setting(self, server_id: int) -> bool:
+        try:
+            result = self.server_settings_collection.delete_one({
+                'server_id': server_id
+            })
+            return result.deleted_count > 0
+        except Exception as e:
+            print(f"Error removing server setting: {e}")
+            return False
+        
+    def get_server_setting(self, server_id: int) -> server_setting | None:
+        try:
+            setting_data = self.server_settings_collection.find_one({
+                'server_id': server_id
+            })
+            if setting_data:
+                return server_setting.from_dict(setting_data)
+            return None
+        except Exception as e:
+            print(f"Error retrieving server setting: {e}")
+            return None
+        
+    def edit_server_setting(self, setting: server_setting) -> bool:
+        try:
+            result = self.server_settings_collection.update_one(
+                {'server_id': setting.server_id},
+                {'$set': {
+                    'auto_moderation': setting.auto_moderation,
+                    'audit_channel': setting.audit_channel
+                }}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error editing server setting: {e}")
+            return False
         
     def get_warns(self, server_id: int, user_id: int) -> server_warn | None:
         try:
@@ -78,11 +153,23 @@ class database:
         
     def remove_warn(self, warn: server_warn) -> bool:
         try:
-            result = self.warns_collection.delete_one({
+            existing = self.warns_collection.find_one({
                 'server_id': warn.server_id,
                 'user_id': warn.user_id
             })
-            return result.deleted_count > 0
+            if not existing:
+                return False
+
+            current_count = existing.get('count', 0)
+            if current_count <= 1:
+                result = self.warns_collection.delete_one({'_id': existing['_id']})
+                return result.deleted_count > 0
+
+            result = self.warns_collection.update_one(
+                {'_id': existing['_id']},
+                {'$set': {'count': current_count - 1}}
+            )
+            return result.modified_count > 0
         except Exception as e:
             print(f"Error removing warn: {e}")
             return False
