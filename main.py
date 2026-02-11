@@ -486,6 +486,18 @@ async def remove_all_banned_words(interaction : discord.Interaction):
 
 cached_server_settings = {}
 
+def is_media(message : discord.Message) -> bool:
+    if message.attachments:
+        return True
+    if message.embeds:
+        return True
+    if message.content:
+        if "http://" in message.content.lower() or "https://" in message.content.lower():
+            return True
+        if "GIF" in message.content.upper():
+            return True
+    return False
+
 def get_server_settings(guild_id):
     if guild_id in cached_server_settings:
         return cached_server_settings[guild_id]
@@ -497,6 +509,9 @@ def get_server_settings(guild_id):
 @client.event
 async def on_message_edit(before : discord.Message, after : discord.Message):
     if before.author == client.user:
+        return
+    
+    if is_media(after):
         return
 
     result = get_server_settings(before.guild.id)
