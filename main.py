@@ -393,6 +393,22 @@ async def remove_audit_log_channel(interaction : discord.Interaction):
         embed = error_embed("An error occurred while trying to remove the audit log channel. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+@tree.command(name="random_number", description="Generate a random number between two numbers")
+@discord.app_commands.allowed_installs(guilds=True, users=True)
+@discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@discord.app_commands.describe(min="Minimum number", max="Maximum number")
+async def random_number(interaction : discord.Interaction, min: int, max: int):
+    try:
+        if min > max:
+            await interaction.response.send_message("Minimum number cannot be greater than maximum number.", ephemeral=True)
+            return
+        number = randint(min, max)
+        await interaction.response.send_message(f"Your random number between {min} and {max} is: {number}")
+    except Exception as e:
+        await on_error_custom(e, "random_number command")
+        embed = error_embed("An error occurred while trying to generate a random number. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @tree.command(name="toggle_auto_moderation", description="Toggle auto moderation on or off")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
