@@ -439,9 +439,9 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
     try:
         upper_word = word.upper()
         if db.add_banned_word(banned_word(word=upper_word, server_id=interaction.guild.id)):
-            await interaction.response.send_message(f"{upper_word} has been added to the banned words list.", ephemeral=True)
+            await interaction.response.send_message(f"{word} has been added to the banned words list.", ephemeral=True)
         else:
-            await interaction.response.send_message(f"{upper_word} is already banned in this server.", ephemeral=True)
+            await interaction.response.send_message(f"{word} is already banned in this server.", ephemeral=True)
     except Exception as e:
         print(f"Error in add_banned_word: {e}")
         await on_error_custom(e, "add_banned_word")
@@ -457,9 +457,9 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
     try:
         upper_word = word.upper()
         if db.remove_banned_word(word=upper_word, server_id=interaction.guild.id):
-            await interaction.response.send_message(f"{upper_word} has been removed from the banned words list.", ephemeral=True)
+            await interaction.response.send_message(f"{word} has been removed from the banned words list.", ephemeral=True)
         else:
-            await interaction.response.send_message(f"{upper_word} is not banned in this server.", ephemeral=True)
+            await interaction.response.send_message(f"{word} is not banned in this server.", ephemeral=True)
     except Exception as e:
         print(f"Error in remove_banned_word: {e}")
         await on_error_custom(e, "remove_banned_word")
