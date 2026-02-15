@@ -571,7 +571,14 @@ async def on_message_delete(message : discord.Message):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Message Deleted", description=f"Message by {message.author.mention} was deleted in {message.channel.mention}", color=discord.Color.red())
-            embed.add_field(name="Content", value=message.content if message.content else "No content", inline=False)
+            if message.attachments:
+                embed.add_field(name="Attachments", value="\n".join(attachment.url for attachment in message.attachments), inline=False)
+            if message.embeds:
+                embed.add_field(name="Embeds", value="\n".join(embed.url for embed in message.embeds if embed.url), inline=False)
+            if message.content:
+                embed.add_field(name="Content", value=message.content, inline=False)
+            else:
+                embed.add_field(name="Content", value="No content", inline=False)
             embed.add_field(name="Deleted At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
