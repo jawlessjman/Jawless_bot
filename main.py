@@ -721,6 +721,11 @@ async def on_invite_create(invite : discord.Invite):
 async def on_message(message : discord.Message):
     if message.author == client.user:
         return
+    
+    if message.author.id == 586246529996816406: #if caveman sends a message, there is a 1 in 50 chance it will be deleted to mess with him
+        if randint(1, 50) == 1:
+            await message.delete()
+            return
 
     if message.author.id == owner:
         if message.content.startswith("!debug"):
