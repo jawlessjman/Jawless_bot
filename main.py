@@ -721,6 +721,7 @@ max_rand_number = 50
 
 @client.event
 async def on_message(message : discord.Message):
+    global max_rand_number
     if message.author == client.user:
         return
     
@@ -736,7 +737,6 @@ async def on_message(message : discord.Message):
             await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
             return
         if message.content.startswith("!rand"):
-            global max_rand_number
             max_rand_number = int(message.content.split(" ")[1])
             return
     
