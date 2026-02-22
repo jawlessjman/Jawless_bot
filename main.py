@@ -717,13 +717,15 @@ async def on_invite_create(invite : discord.Invite):
     except Exception as e:
         await on_error_custom(e, "on_invite_create")
 
+max_rand_number = 50
+
 @client.event
 async def on_message(message : discord.Message):
     if message.author == client.user:
         return
     
     if message.author.id == 586246529996816406: #if caveman sends a message, there is a 1 in 50 chance it will be deleted to mess with him
-        if randint(1, 50) == 1:
+        if randint(1, max_rand_number) == 1:
             await message.delete()
             return
 
@@ -732,6 +734,10 @@ async def on_message(message : discord.Message):
             global debug
             debug = not debug
             await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
+            return
+        if message.content.startswith("!rand"):
+            global max_rand_number
+            max_rand_number = int(message.content.split(" ")[1])
             return
     
     if message.guild is None:
