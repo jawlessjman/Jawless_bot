@@ -746,7 +746,7 @@ async def on_message(message : discord.Message):
             await message.reply(f"Max random number is now {max_rand_number}")
             return
     
-    if message.guild is None:
+    if message.guild is None or message.channel is None:
         return
 
     #scan message content
