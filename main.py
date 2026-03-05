@@ -640,6 +640,11 @@ async def on_member_update(before : discord.Member, after : discord.Member):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Updated", description=f"{before.mention} was updated in {after.guild.name}", color=discord.Color.blue())
+            if before.timeout != after.timeout:
+                if after.timeout:
+                    embed.add_field(name="Member Timed Out", value=f"{after.mention} has been timed out until {after.timeout}", inline=False)
+                else:
+                    embed.add_field(name="Member Timeout Removed", value=f"{after.mention} is no longer timed out", inline=False)
             if before.name != after.name:
                 embed.add_field(name="Username Changed", value=f"From: {before.name}\nTo: {after.name}", inline=False)
             if before.nick != after.nick:
@@ -738,6 +743,7 @@ async def on_message(message : discord.Message):
             return
         if message.content.startswith("!rand"):
             max_rand_number = int(message.content.split(" ")[1])
+            await message.reply(f"Max random number is now {max_rand_number}")
             return
     
     if message.guild is None:
