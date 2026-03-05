@@ -195,6 +195,8 @@ class database:
         
     def does_word_contain_banned_word(self, content: str, server_id: int) -> bool:
         try:
+            if server_id is None:
+                return False
             banned_words = self.banned_words_collection.find({
                 'server_id': server_id
             })
@@ -208,6 +210,8 @@ class database:
         
     def is_word_banned(self, word: str, server_id: int) -> bool:
         try:
+            if server_id is None:
+                return False
             return self.banned_words_collection.find_one({
                 'word': word,
                 'server_id': server_id
