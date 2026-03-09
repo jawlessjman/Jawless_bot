@@ -642,7 +642,7 @@ async def on_member_update(before : discord.Member, after : discord.Member):
             embed = discord.Embed(title="Member Updated", description=f"{before.mention} was updated in {after.guild.name}", color=discord.Color.blue())
             if before.timeout != after.timeout:
                 if after.timeout:
-                    embed.add_field(name="Member Timed Out", value=f"{after.mention} has been timed out until {after.timeout}", inline=False)
+                    embed.add_field(name="Member Timed Out", value=f"{after.mention} has been timed out until {after.timed_out_until}", inline=False)
                 else:
                     embed.add_field(name="Member Timeout Removed", value=f"{after.mention} is no longer timed out", inline=False)
             if before.name != after.name:
