@@ -106,7 +106,8 @@ class database:
                 {'server_id': setting.server_id},
                 {'$set': {
                     'auto_moderation': setting.auto_moderation,
-                    'audit_channel': setting.audit_channel
+                    'audit_channel': setting.audit_channel,
+                    'show_auto_moderation_messages': setting.show_auto_moderation_messages
                 }}
             )
             return result.modified_count > 0
