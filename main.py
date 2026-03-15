@@ -447,7 +447,7 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
             await interaction.response.send_message(f"{word} has been added to the banned words list.", ephemeral=True)
             result = db.get_server_setting(interaction.guild.id)
             audit_channel = client.get_channel(result.audit_channel)
-            if audit_channel:
+            if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="Banned Word Added", description=f"{interaction.user.mention} added `{word}` to the banned words list.", color=discord.Color.red())
                 embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
                 await audit_channel.send(embed=embed)
@@ -471,7 +471,7 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
             await interaction.response.send_message(f"{word} has been removed from the banned words list.", ephemeral=True)
             result = db.get_server_setting(interaction.guild.id)
             audit_channel = client.get_channel(result.audit_channel)
-            if audit_channel:
+            if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="Banned Word Removed", description=f"{interaction.user.mention} removed `{word}` from the banned words list.", color=discord.Color.red())
                 embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
                 await audit_channel.send(embed=embed)
@@ -511,7 +511,7 @@ async def remove_all_banned_words(interaction : discord.Interaction):
         await interaction.response.send_message("All banned words have been removed from this server.", ephemeral=True)
         result = db.get_server_setting(interaction.guild.id)
         audit_channel = client.get_channel(result.audit_channel)
-        if audit_channel:
+        if audit_channel and result.show_auto_moderation_messages:
             embed = discord.Embed(title="All Banned Words Removed", description=f"All banned words have been removed from the server by {interaction.user.mention}.", color=discord.Color.red())
             embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
             await audit_channel.send(embed=embed)
@@ -660,7 +660,9 @@ async def on_member_update(before : discord.Member, after : discord.Member):
         return
 
     try:
-        await on_error_custom(f"before: {before}, after: {after}", "on_member_update debug log")
+        #print the differences between before and after to the console for debugging purposes
+        await on_error_custom(f"", "on_member_update debug log")
+        
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Updated", description=f"{before.mention} was updated in {after.guild.name}", color=discord.Color.blue())
