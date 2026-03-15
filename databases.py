@@ -3,14 +3,16 @@ import os
 from dotenv import load_dotenv
 
 class server_setting:
-    def __init__(self, server_id: int, auto_moderation: bool = False, audit_channel: int = None):
+    def __init__(self, server_id: int, auto_moderation: bool = False, show_auto_moderation_messages: bool = False, audit_channel: int = None):
         self.server_id : int = server_id
         self.auto_moderation : bool = auto_moderation
+        self.show_auto_moderation_messages : bool = show_auto_moderation_messages
         self.audit_channel : int = audit_channel
 
     def from_dict(data: dict):
         instance = server_setting(data['server_id'])
         instance.auto_moderation = data.get('auto_moderation', False)
+        instance.show_auto_moderation_messages = data.get('show_auto_moderation_messages', False)
         instance.audit_channel = data.get('audit_channel', None)
         return instance
 

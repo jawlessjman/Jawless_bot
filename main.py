@@ -355,6 +355,32 @@ async def purge(interaction : discord.Interaction, amount: int):
         
 #banned words commands
 
+@tree.command(name="change_server_bot_settings", description="Change the server's bot settings")
+@discord.app_commands.allowed_installs(guilds=True, users=False)
+@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
+@discord.app_commands.checks.has_permissions(manage_messages=True)
+async def change_server_bot_settings(interaction : discord.Interaction, auto_moderation: bool = None, show_auto_moderation_messages: bool = None):
+    try:
+        result = db.get_server_setting(interaction.guild.id)
+        if result is None:
+            result = server_setting(server_id=interaction.guild.id)
+        
+        if auto_moderation is not None:
+            result.auto_moderation = auto_moderation
+        if show_auto_moderation_messages is not None:
+            result.show_auto_moderation_messages = show_auto_moderation_messages
+        
+        if db.edit_server_setting(result):
+            cached_server_settings[interaction.guild.id] = result
+            await interaction.response.send_message("Server bot settings have been updated.", ephemeral=True)
+        else:
+            await interaction.response.send_message("Failed to update server bot settings.", ephemeral=True)
+    except Exception as e:
+        print(f"Error in change_server_bot_settings command: {e}")
+        await on_error_custom(e, "change_server_bot_settings command")
+        embed = error_embed("An error occurred while trying to change the server bot settings. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @tree.command(name="add_audit_log_channel", description="Set the channel for audit logs")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
@@ -409,27 +435,6 @@ async def random_number(interaction : discord.Interaction, min: int, max: int):
         embed = error_embed("An error occurred while trying to generate a random number. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@tree.command(name="toggle_auto_moderation", description="Toggle auto moderation on or off")
-@discord.app_commands.allowed_installs(guilds=True, users=False)
-@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
-@discord.app_commands.checks.has_permissions(manage_messages=True)
-async def toggle_auto_moderation(interaction : discord.Interaction):
-    try:
-        result = db.get_server_setting(interaction.guild.id)
-        if result is None:
-            db.add_server_setting(server_setting(server_id=interaction.guild.id, auto_moderation=True))
-            cached_server_settings[interaction.guild.id] = server_setting(server_id=interaction.guild.id, auto_moderation=True)
-            await interaction.response.send_message("Auto moderation has been turned on.", ephemeral=True)
-        else:
-            result.auto_moderation = not result.auto_moderation
-            db.edit_server_setting(result)
-            cached_server_settings[interaction.guild.id] = result
-            await interaction.response.send_message(f"Auto moderation has been turned {'on' if result.auto_moderation else 'off'}.", ephemeral=True)
-    except Exception as e:
-        await on_error_custom(e, "toggle_auto_moderation command")
-        embed = error_embed("An error occurred while trying to toggle auto moderation. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
 @tree.command(name="addbannedword", description="Add a banned word to the server")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
@@ -440,6 +445,12 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
         upper_word = word.upper()
         if db.add_banned_word(banned_word(word=upper_word, server_id=interaction.guild.id)):
             await interaction.response.send_message(f"{word} has been added to the banned words list.", ephemeral=True)
+            result = db.get_server_setting(interaction.guild.id)
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel:
+                embed = discord.Embed(title="Banned Word Added", description=f"{interaction.user.mention} added `{word}` to the banned words list.", color=discord.Color.red())
+                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                await audit_channel.send(embed=embed)
         else:
             await interaction.response.send_message(f"{word} is already banned in this server.", ephemeral=True)
     except Exception as e:
@@ -458,6 +469,12 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
         upper_word = word.upper()
         if db.remove_banned_word(word=upper_word, server_id=interaction.guild.id):
             await interaction.response.send_message(f"{word} has been removed from the banned words list.", ephemeral=True)
+            result = db.get_server_setting(interaction.guild.id)
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel:
+                embed = discord.Embed(title="Banned Word Removed", description=f"{interaction.user.mention} removed `{word}` from the banned words list.", color=discord.Color.red())
+                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                await audit_channel.send(embed=embed)
         else:
             await interaction.response.send_message(f"{word} is not banned in this server.", ephemeral=True)
     except Exception as e:
@@ -492,6 +509,12 @@ async def remove_all_banned_words(interaction : discord.Interaction):
     try:
         db.banned_words_collection.delete_many({'server_id': interaction.guild.id})
         await interaction.response.send_message("All banned words have been removed from this server.", ephemeral=True)
+        result = db.get_server_setting(interaction.guild.id)
+        audit_channel = client.get_channel(result.audit_channel)
+        if audit_channel:
+            embed = discord.Embed(title="All Banned Words Removed", description=f"All banned words have been removed from the server by {interaction.user.mention}.", color=discord.Color.red())
+            embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+            await audit_channel.send(embed=embed)
     except Exception as e:
         print(f"Error in remove_all_banned_words: {e}")
         await on_error_custom(e, "remove_all_banned_words")
@@ -637,6 +660,7 @@ async def on_member_update(before : discord.Member, after : discord.Member):
         return
 
     try:
+        await on_error_custom(f"before: {before}, after: {after}", "on_member_update debug log")
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Updated", description=f"{before.mention} was updated in {after.guild.name}", color=discord.Color.blue())
