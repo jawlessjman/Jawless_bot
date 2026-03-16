@@ -190,6 +190,12 @@ async def kick(interaction : discord.Interaction, user: discord.User, reason: st
             await interaction.guild.kick(user, reason=reason)
             await interaction.response.send_message(f"{user.mention} has been kicked for: {reason}")
             await send_target_view(target=user, target_type="kicked", reason=reason, server=interaction.guild)
+            result = db.get_server_setting(interaction.guild.id)
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel and result.show_auto_moderation_messages:
+                embed = discord.Embed(title="User Kicked", description=f"{interaction.user.mention} kicked {user.mention} for: {reason}", color=discord.Color.orange())
+                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                await audit_channel.send(embed=embed)
         except discord.Forbidden:
             await interaction.response.send_message("I do not have permission to kick this user.", ephemeral=True)
     except Exception as e:
@@ -216,6 +222,12 @@ async def ban(interaction : discord.Interaction, user: discord.User, reason: str
             await interaction.guild.ban(user, reason=reason)
             await interaction.response.send_message(f"{user.mention} has been banned for: {reason}")
             await send_target_view(target=user, target_type="banned", reason=reason, server=interaction.guild)
+            result = db.get_server_setting(interaction.guild.id)
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel and result.show_auto_moderation_messages:
+                embed = discord.Embed(title="User Banned", description=f"{interaction.user.mention} banned {user.mention} for: {reason}", color=discord.Color.red())
+                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                await audit_channel.send(embed=embed)
         except discord.Forbidden:
             await interaction.response.send_message("I do not have permission to ban this user.", ephemeral=True)
     except Exception as e:
@@ -238,6 +250,12 @@ async def unban(interaction : discord.Interaction, user: discord.User, reason: s
         try:
             await interaction.guild.unban(user, reason=reason)
             await interaction.response.send_message(f"{user.mention} has been unbanned for: {reason}")
+            result = db.get_server_setting(interaction.guild.id)
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel and result.show_auto_moderation_messages:
+                embed = discord.Embed(title="User Unbanned", description=f"{interaction.user.mention} unbanned {user.mention} for: {reason}", color=discord.Color.green())
+                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                await audit_channel.send(embed=embed)
         except discord.Forbidden:
             await interaction.response.send_message("I do not have permission to unban this user.", ephemeral=True)
     except Exception as e:
@@ -264,6 +282,12 @@ async def warn(interaction : discord.Interaction, user: discord.User, reason: st
             db.add_warn(server_warn(server_id=interaction.guild.id, user_id=user.id))
             await send_target_view(target=user, target_type="warned", reason=reason, server=interaction.guild)
             await interaction.response.send_message(f"{user.mention} has been warned for: {reason}")
+            result = db.get_server_setting(interaction.guild.id)
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel and result.show_auto_moderation_messages:
+                embed = discord.Embed(title="User Warned", description=f"{interaction.user.mention} warned {user.mention} for: {reason}", color=discord.Color.orange())
+                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                await audit_channel.send(embed=embed)
         except discord.Forbidden:
             await interaction.response.send_message("I do not have permission to warn this user.", ephemeral=True)
     except Exception as e:
@@ -289,6 +313,12 @@ async def remove_warn(interaction : discord.Interaction, user: discord.User, rea
         try:
             if db.remove_warn(server_warn(server_id=interaction.guild.id, user_id=user.id)):
                 await interaction.response.send_message(f"{user.mention} has had their warn removed for: {reason}")
+                result = db.get_server_setting(interaction.guild.id)
+                audit_channel = client.get_channel(result.audit_channel)
+                if audit_channel and result.show_auto_moderation_messages:
+                    embed = discord.Embed(title="Warn Removed", description=f"{interaction.user.mention} removed a warn from {user.mention} for: {reason}", color=discord.Color.green())
+                    embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                    await audit_channel.send(embed=embed)
             else:
                 await interaction.response.send_message(f"{user.mention} has no warns to remove.", ephemeral=True)
         except discord.Forbidden:
@@ -373,6 +403,15 @@ async def change_server_bot_settings(interaction : discord.Interaction, auto_mod
         if db.edit_server_setting(result):
             cached_server_settings[interaction.guild.id] = result
             await interaction.response.send_message("Server bot settings have been updated.", ephemeral=True)
+
+            result = db.get_server_setting(interaction.guild.id)
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel and result.show_auto_moderation_messages:
+                embed = discord.Embed(title="Server Bot Settings Updated", description=f"{interaction.user.mention} updated the server bot settings.", color=discord.Color.blue())
+                embed.add_field(name="Auto Moderation", value=str(result.auto_moderation), inline=False)
+                embed.add_field(name="Show Auto Moderation Messages", value=str(result.show_auto_moderation_messages), inline=False)
+                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                await audit_channel.send(embed=embed)
         else:
             await interaction.response.send_message("Failed to update server bot settings.", ephemeral=True)
     except Exception as e:
@@ -647,21 +686,34 @@ async def on_member_remove(member : discord.Member):
     except Exception as e:
         await on_error_custom(e, "on_member_remove")
 
+def get_member_string(member : discord.Member):
+    string = ""
+    string += f"Username: {member.name}#{member.discriminator}\n"
+    string += f"ID: {member.id}\n"
+    if member.nick:
+        string += f"Nickname: {member.nick}\n"
+    if member.joined_at:
+        string += f"Joined At: {member.joined_at}\n"
+    if member.roles:
+        string += f"Roles: {', '.join(role.name for role in member.roles)}\n"
+    if member.is_timed_out():
+        string += f"Timed Out Until: {member.timed_out_until}\n"
+    if member.avatar:
+        string += f"Avatar URL: {member.avatar.url}\n"
+    return string
+
 @client.event
 async def on_member_update(before : discord.Member, after : discord.Member):
-    if before.guild is None:
+    if before.guild or after.guild is None:
         return
 
     result = get_server_settings(after.guild.id)
     if result == None:
         return
-    
-    if not result.audit_channel:
-        return
 
     try:
         #print the differences between before and after to the console for debugging purposes
-        await on_error_custom(f"", "on_member_update debug log")
+        await on_error_custom(f"before: {get_member_string(before)}\n\n\nafter: {get_member_string(after)}", "on_member_update debug log")
         
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
