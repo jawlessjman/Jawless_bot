@@ -823,6 +823,37 @@ async def on_message(message : discord.Message):
             max_rand_number = int(message.content.split(" ")[1])
             await message.reply(f"Max random number is now {max_rand_number}")
             return
+        if message.content.startswith("!startc"):
+            if db.add_caveman_challenge():
+                await message.reply("Caveman challenge started!")
+        if message.content.startswith("!resetc"):
+            if db.fail_caveman_challenge():
+                result = db.get_caveman_challenge()
+                if result and result.fail_time:
+                    time_diff = result.fail_time - result.start_time
+                    await message.reply(f"Caveman challenge failed! Time lasted: {time_diff}")
+        if message.content.startswith("!timec"):
+            result = db.get_caveman_challenge()
+            if result:
+                if result.fail_time:
+                    time_diff = result.fail_time - result.start_time
+                    await message.reply(f"Caveman challenge failed! Time lasted: {time_diff}")
+                else:
+                    time_diff = discord.utils.utcnow() - result.start_time
+                    await message.reply(f"Caveman challenge is still going! Time so far: {time_diff}")
+        if message.content.startswith("!lc"):
+            attempts = db.get_caveman_challenges()
+            if attempts is not None:
+                #create an embed with each attempt on a new line showing the start time, and time lasted if failed
+                embed = discord.Embed(title="Caveman Challenge Attempts", color=discord.Color.blue())
+                for attempt in attempts:
+                    if attempt.fail_time:
+                        time_diff = attempt.fail_time - attempt.start_time
+                        embed.add_field(name=f"Attempt {attempt.id}", value=f"Start Time: {attempt.start_time}\nFailed: Yes\nTime Lasted: {time_diff}", inline=False)
+                    else:
+                        time_diff = discord.utils.utcnow() - attempt.start_time
+                        embed.add_field(name=f"Attempt {attempt.id}", value=f"Start Time: {attempt.start_time}\nFailed: No\nTime So Far: {time_diff}", inline=False)
+                await message.reply(embed=embed)
     
     if message.guild is None or message.channel is None:
         return

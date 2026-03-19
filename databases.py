@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
+import datetime
 
 class server_setting:
     def __init__(self, server_id: int, auto_moderation: bool = False, show_auto_moderation_messages: bool = False, audit_channel: int = None):
@@ -14,6 +15,18 @@ class server_setting:
         instance.auto_moderation = data.get('auto_moderation', False)
         instance.show_auto_moderation_messages = data.get('show_auto_moderation_messages', False)
         instance.audit_channel = data.get('audit_channel', None)
+        return instance
+    
+class caveman_challenge:
+    def __init__(self):
+        self.start_time : datetime.datetime = datetime.datetime.now()
+        self.fail_time : datetime = None
+
+    @staticmethod
+    def from_dict(data: dict):
+        instance = caveman_challenge()
+        instance.start_time = data.get('start_time', datetime.datetime.now())
+        instance.fail_time = data.get('fail_time', instance.start_time + datetime.timedelta(minutes=5))
         return instance
 
 class server_warn:
@@ -52,6 +65,54 @@ class database:
             self.warns_collection = None
             self.banned_words_collection = None
             self.server_settings_collection = None
+
+    #get 10 results of caveman challenges sorted by longest time to fail
+    def get_caveman_challenges(self) -> list[caveman_challenge]:
+        try:
+            challenges = self.db['caveman_challenges'].find()
+            sorted_challenges = sorted(challenges, key=lambda x: (x['fail_time'] - x['start_time']) if x['fail_time'] else datetime.timedelta.max, reverse=True)
+            return [caveman_challenge.from_dict(challenge) for challenge in sorted_challenges[:10]]
+        except Exception as e:
+            print(f"Error retrieving caveman challenges: {e}")
+            return []
+
+    def add_caveman_challenge(self) -> bool:
+        try:
+            challenge_data = {
+                'start_time': datetime.datetime.now(),
+                'fail_time': None
+            }
+            self.db['caveman_challenges'].insert_one(challenge_data)
+            return True
+        except Exception as e:
+            print(f"Error adding caveman challenge: {e}")
+            return False
+    
+    #get the last caveman challenge and return it as a caveman_challenge object
+    def get_caveman_challenge(self) -> caveman_challenge | None:
+        try:
+            last_challenge = self.db['caveman_challenges'].find_one(sort=[('start_time', -1)])
+            if last_challenge:
+                return caveman_challenge.from_dict(last_challenge)
+            return None
+        except Exception as e:
+            print(f"Error retrieving caveman challenge: {e}")
+            return None
+        
+    #get the last caveman challenge and set the fail time to now
+    def fail_caveman_challenge(self) -> bool:
+        try:
+            last_challenge = self.db['caveman_challenges'].find_one(sort=[('start_time', -1)])
+            if last_challenge and not last_challenge.get('fail_time'):
+                self.db['caveman_challenges'].update_one(
+                    {'_id': last_challenge['_id']},
+                    {'$set': {'fail_time': datetime.datetime.now()}}
+                )
+                return True
+            return False
+        except Exception as e:
+            print(f"Error failing caveman challenge: {e}")
+            return False
 
     def add_server_setting(self, setting: server_setting) -> bool:
         try:
