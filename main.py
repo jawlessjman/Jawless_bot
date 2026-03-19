@@ -818,10 +818,7 @@ async def on_message(message : discord.Message):
                 x += 1
                 if attempt.fail_time:
                     time_diff = attempt.fail_time - attempt.start_time
-                    embed.add_field(name=f"Attempt {x}", value=f"Start Time: {attempt.start_time}\nFailed: Yes\nTime Lasted: {time_diff}", inline=False)
-                else:
-                    time_diff = discord.utils.utcnow() - attempt.start_time
-                    embed.add_field(name=f"Attempt {x}", value=f"Start Time: {attempt.start_time}\nFailed: No\nTime So Far: {time_diff}", inline=False)
+                    embed.add_field(name=f"{x}.", value=f"Start Time: {attempt.start_time}\nFailed: Yes\nTime Lasted: {time_diff}", inline=False)
             await message.reply(embed=embed)
         else:
             on_error_custom("No caveman challenge attempts found in the database.", "on_message !lc command")
