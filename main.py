@@ -832,6 +832,8 @@ async def on_message(message : discord.Message):
                 if result and result.fail_time:
                     time_diff = result.fail_time - result.start_time
                     await message.reply(f"Caveman challenge failed! Time lasted: {time_diff}")
+                    db.add_caveman_challenge() #start a new challenge immediately after resetting
+                    await message.reply("Caveman challenge restarted!")
         if message.content.startswith("!timec"):
             result = db.get_caveman_challenge()
             if result:
