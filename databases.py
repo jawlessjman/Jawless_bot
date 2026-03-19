@@ -20,14 +20,31 @@ class server_setting:
     
 class caveman_challenge:
     def __init__(self):
-        self.start_time : datetime.datetime = discord.utils.utcnow()
-        self.fail_time : datetime = None
+        self.start_time: datetime.datetime = discord.utils.utcnow()
+        self.fail_time: datetime.datetime | None = None
+
+    @staticmethod
+    def ensure_utc(dt: datetime.datetime | None) -> datetime.datetime | None:
+        if dt is None:
+            return None
+
+        # If datetime is naive, assume it is UTC and attach timezone
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=datetime.timezone.utc)
+
+        # If it already has timezone info, convert it to UTC
+        return dt.astimezone(datetime.timezone.utc)
 
     @staticmethod
     def from_dict(data: dict):
         instance = caveman_challenge()
-        instance.start_time = data.get('start_time', discord.utils.utcnow())
-        instance.fail_time = data.get('fail_time', instance.start_time + datetime.timedelta(minutes=5))
+
+        start_time = data.get('start_time')
+        fail_time = data.get('fail_time')
+
+        instance.start_time = caveman_challenge.ensure_utc(start_time) or discord.utils.utcnow()
+        instance.fail_time = caveman_challenge.ensure_utc(fail_time)
+
         return instance
 
 class server_warn:
