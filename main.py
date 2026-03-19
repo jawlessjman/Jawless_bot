@@ -809,20 +809,22 @@ async def on_message(message : discord.Message):
         return
     
     if message.content.startswith("!lc"):
-            attempts = db.get_caveman_challenges()
-            if attempts is not None:
-                #create an embed with each attempt on a new line showing the start time, and time lasted if failed
-                embed = discord.Embed(title="Caveman Challenge Attempts", color=discord.Color.blue())
-                for attempt in attempts:
-                    if attempt.fail_time:
-                        time_diff = attempt.fail_time - attempt.start_time
-                        embed.add_field(name=f"Attempt {attempt.id}", value=f"Start Time: {attempt.start_time}\nFailed: Yes\nTime Lasted: {time_diff}", inline=False)
-                    else:
-                        time_diff = discord.utils.utcnow() - attempt.start_time
-                        embed.add_field(name=f"Attempt {attempt.id}", value=f"Start Time: {attempt.start_time}\nFailed: No\nTime So Far: {time_diff}", inline=False)
-                await message.reply(embed=embed)
-            else:
-                on_error_custom("No caveman challenge attempts found in the database.", "on_message !lc command")
+        attempts = db.get_caveman_challenges()
+        if attempts is not None:
+            #create an embed with each attempt on a new line showing the start time, and time lasted if failed
+            embed = discord.Embed(title="Caveman Challenge Attempts", color=discord.Color.blue())
+            x = 0
+            for attempt in attempts:
+                x += 1
+                if attempt.fail_time:
+                    time_diff = attempt.fail_time - attempt.start_time
+                    embed.add_field(name=f"Attempt {x}", value=f"Start Time: {attempt.start_time}\nFailed: Yes\nTime Lasted: {time_diff}", inline=False)
+                else:
+                    time_diff = discord.utils.utcnow() - attempt.start_time
+                    embed.add_field(name=f"Attempt {x}", value=f"Start Time: {attempt.start_time}\nFailed: No\nTime So Far: {time_diff}", inline=False)
+            await message.reply(embed=embed)
+        else:
+            on_error_custom("No caveman challenge attempts found in the database.", "on_message !lc command")
     
     if message.content.startswith("!timec"):
         result = db.get_caveman_challenge()
