@@ -2,6 +2,7 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 import datetime
+import discord
 
 class server_setting:
     def __init__(self, server_id: int, auto_moderation: bool = False, show_auto_moderation_messages: bool = False, audit_channel: int = None):
@@ -19,13 +20,13 @@ class server_setting:
     
 class caveman_challenge:
     def __init__(self):
-        self.start_time : datetime.datetime = datetime.datetime.now()
+        self.start_time : datetime.datetime = discord.utils.utcnow()
         self.fail_time : datetime = None
 
     @staticmethod
     def from_dict(data: dict):
         instance = caveman_challenge()
-        instance.start_time = data.get('start_time', datetime.datetime.now())
+        instance.start_time = data.get('start_time', discord.utils.utcnow())
         instance.fail_time = data.get('fail_time', instance.start_time + datetime.timedelta(minutes=5))
         return instance
 
@@ -79,7 +80,7 @@ class database:
     def add_caveman_challenge(self) -> bool:
         try:
             challenge_data = {
-                'start_time': datetime.datetime.now(),
+                'start_time': discord.utils.utcnow(),
                 'fail_time': None
             }
             self.db['caveman_challenges'].insert_one(challenge_data)
@@ -106,7 +107,7 @@ class database:
             if last_challenge and not last_challenge.get('fail_time'):
                 self.db['caveman_challenges'].update_one(
                     {'_id': last_challenge['_id']},
-                    {'$set': {'fail_time': datetime.datetime.now()}}
+                    {'$set': {'fail_time': discord.utils.utcnow()}}
                 )
                 return True
             return False
