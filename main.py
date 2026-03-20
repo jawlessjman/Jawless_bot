@@ -815,8 +815,8 @@ async def on_message(message : discord.Message):
             embed = discord.Embed(title="Caveman Challenge Attempts", color=discord.Color.blue())
             x = 0
             for attempt in attempts:
-                x += 1
                 if attempt.fail_time:
+                    x += 1
                     time_diff = attempt.fail_time - attempt.start_time
                     embed.add_field(name=f"{x}.", value=f"Start Time: {attempt.start_time}\nFailed: Yes\nTime Lasted: {time_diff}", inline=False)
             await message.reply(embed=embed)
