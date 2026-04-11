@@ -403,10 +403,6 @@ async def mute_user(interaction : discord.Interaction, user: discord.Member, rea
             return
         
         await user.add_roles(mute_role, reason=reason)
-        await user.move_to(mute_channel, reason=reason)
-
-        if isinstance(mute_channel, discord.VoiceChannel) and user.voice is not None:
-            await user.move_to(mute_channel, reason=reason)
 
         if result.audit_channel:
             audit_channel = client.get_channel(result.audit_channel)
