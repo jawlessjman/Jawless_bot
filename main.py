@@ -488,7 +488,7 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
             audit_channel = client.get_channel(result.audit_channel)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="Banned Word Added", description=f"{interaction.user.mention} added `{word}` to the banned words list.", color=discord.Color.red())
-                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
                 await audit_channel.send(embed=embed)
         else:
             await interaction.response.send_message(f"{word} is already banned in this server.", ephemeral=True)
@@ -512,7 +512,7 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
             audit_channel = client.get_channel(result.audit_channel)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="Banned Word Removed", description=f"{interaction.user.mention} removed `{word}` from the banned words list.", color=discord.Color.red())
-                embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+                embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
                 await audit_channel.send(embed=embed)
         else:
             await interaction.response.send_message(f"{word} is not banned in this server.", ephemeral=True)
@@ -552,7 +552,7 @@ async def remove_all_banned_words(interaction : discord.Interaction):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel and result.show_auto_moderation_messages:
             embed = discord.Embed(title="All Banned Words Removed", description=f"All banned words have been removed from the server by {interaction.user.mention}.", color=discord.Color.red())
-            embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
+            embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         print(f"Error in remove_all_banned_words: {e}")
@@ -623,10 +623,7 @@ async def on_message_delete(message : discord.Message):
         return
 
     result = get_server_settings(message.guild.id)
-    if result == None:
-        return
-    
-    if result.audit_channel == None:
+    if result == None or result.audit_channel is None:
         return
     
     try:
@@ -641,7 +638,7 @@ async def on_message_delete(message : discord.Message):
                 embed.add_field(name="Content", value=message.content, inline=False)
             else:
                 embed.add_field(name="Content", value="No content", inline=False)
-            embed.add_field(name="Deleted At", value=discord.utils.utcnow(), inline=False)
+            embed.add_field(name="Deleted At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_message_delete")
@@ -652,17 +649,14 @@ async def on_message_bulk_delete(messages : list[discord.Message]):
         return
 
     result = get_server_settings(messages[0].guild.id)
-    if result == None:
-        return
-    
-    if result.audit_channel == None:
+    if result == None or result.audit_channel is None:
         return
     
     try:
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Bulk Message Delete", description=f"{len(messages)} messages were deleted in {messages[0].channel.mention}", color=discord.Color.red())
-            embed.add_field(name="Deleted At", value=discord.utils.utcnow(), inline=False)
+            embed.add_field(name="Deleted At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_message_bulk_delete")
@@ -670,10 +664,8 @@ async def on_message_bulk_delete(messages : list[discord.Message]):
 @client.event
 async def on_member_remove(member : discord.Member):
     result = get_server_settings(member.guild.id)
-    if result == None:
-        return
-    
-    if result.audit_channel == None:
+
+    if result == None or result.audit_channel is None:
         return
     
     try:
@@ -681,7 +673,7 @@ async def on_member_remove(member : discord.Member):
         if audit_channel:
             embed = discord.Embed(title="Member Left", description=f"{member.mention} has left the server.", color=discord.Color.red())
             embed.add_field(name="Joined At", value=member.joined_at if member.joined_at else "Unknown", inline=False)
-            embed.add_field(name="Left At", value=discord.utils.utcnow(), inline=False)
+            embed.add_field(name="Left At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_remove")
@@ -697,7 +689,7 @@ def get_member_string(member : discord.Member):
     if member.roles:
         string += f"Roles: {', '.join(role.name for role in member.roles)}\n"
     if member.is_timed_out():
-        string += f"Timed Out Until: {member.timed_out_until}\n"
+        string += f"Timed Out Until: <t:{member.timed_out_until.timestamp()}:F>\n"
     if member.avatar:
         string += f"Avatar URL: {member.avatar.url}\n"
     return string
@@ -708,7 +700,7 @@ async def on_member_update(before : discord.Member, after : discord.Member):
         return
 
     result = get_server_settings(after.guild.id)
-    if result == None:
+    if result == None or result.audit_channel is None:
         return
 
     try:
@@ -739,7 +731,7 @@ async def on_member_update(before : discord.Member, after : discord.Member):
                     embed.add_field(name="Roles Removed", value=", ".join(role.name for role in removed_roles), inline=False)
             if before.avatar != after.avatar:
                 embed.add_field(name="Avatar Changed", value=f"{after.mention} changed their avatar.", inline=False)
-            embed.add_field(name="Updated At", value=discord.utils.utcnow(), inline=False)
+            embed.add_field(name="Updated At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_update")
@@ -747,10 +739,8 @@ async def on_member_update(before : discord.Member, after : discord.Member):
 @client.event 
 async def on_member_ban(guild : discord.Guild, user : discord.Member):
     result = get_server_settings(guild.id)
-    if result == None:
-        return
-    
-    if result.audit_channel == None:
+
+    if result == None or result.audit_channel is None:
         return
     
     try:
@@ -758,7 +748,7 @@ async def on_member_ban(guild : discord.Guild, user : discord.Member):
         if audit_channel:
             embed = discord.Embed(title="Member Banned", description=f"{user.mention} has been banned from the server.", color=discord.Color.red())
             embed.add_field(name="Member since", value=user.joined_at if user.joined_at else "Unknown", inline=False)
-            embed.add_field(name="Banned At", value=discord.utils.utcnow(), inline=False)
+            embed.add_field(name="Banned At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_ban")
@@ -766,17 +756,14 @@ async def on_member_ban(guild : discord.Guild, user : discord.Member):
 @client.event
 async def on_member_unban(guild : discord.Guild, user : discord.User):
     result = get_server_settings(guild.id)
-    if result == None:
-        return
-    
-    if result.audit_channel == None:
+    if result == None or result.audit_channel is None:
         return
     
     try:
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Unbanned", description=f"{user.mention} has been unbanned from the server.", color=discord.Color.green())
-            embed.add_field(name="Unbanned At", value=discord.utils.utcnow(), inline=False)
+            embed.add_field(name="Unbanned At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_member_unban")
@@ -784,10 +771,7 @@ async def on_member_unban(guild : discord.Guild, user : discord.User):
 @client.event
 async def on_invite_create(invite : discord.Invite):
     result = get_server_settings(invite.guild.id)
-    if result == None:
-        return
-    
-    if result.audit_channel == None:
+    if result == None or result.audit_channel is None:
         return
     
     try:
