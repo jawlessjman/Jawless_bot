@@ -374,6 +374,8 @@ async def set_mute_role(interaction : discord.Interaction, role: discord.Role = 
     #if role is none then create a new mute role, otherwise set the provided role as the mute role
     #if the channel is None then create a new channel for muted users that allows members with the role muted to view, and all other channels need to be changed to not allow muted to view them
 
+    await interaction.response.defer()
+
     try:
         if role is None:
             #create mute role
@@ -399,13 +401,12 @@ async def set_mute_role(interaction : discord.Interaction, role: discord.Role = 
             result.muted_role_id = role.id
             result.muted_channel_id = channel.id
             db.edit_server_setting(result)
-        await interaction.response.send_message(f"The mute role has been set to {role.mention} and the mute channel has been set to {channel.mention}.", ephemeral=True)
+        await interaction.followup.send(f"The mute role has been set to {role.mention} and the mute channel has been set to {channel.mention}.", ephemeral=True)
     except Exception as e:
         print(f"Error creating mute role or channel: {e}")
         await on_error_custom(e, "set_mute_role command - creating role/channel")
         embed = error_embed("An error occurred while trying to create the mute role or channel. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
+        await interaction.followup.send(embed=embed, ephemeral=True)
     
 @tree.command(name="mute_user", description="mute a user in the server")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
