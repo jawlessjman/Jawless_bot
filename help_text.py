@@ -16,6 +16,10 @@ help = """
 - /removebannedword : remove a word from the servers ban list
 - /iswordbanned : see if a word is banned in the server
 - /removeallbannedwords : remove all banned words in a server 
+- /set_mute_settings : set the mute role and channel for the server
+- /remove_mute_settings : remove the mute role and channel settings for the server
+- /mute_user : mute a user in the server
+- /unmute_user : unmute a user in the server
 """
 
 kayden_quotes = """
