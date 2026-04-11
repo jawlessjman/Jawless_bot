@@ -379,6 +379,12 @@ async def remove_mute_settings(interaction : discord.Interaction):
 @discord.app_commands.describe(role="Role to set as the mute role", channel="Channel to be used for muted users")
 async def set_mute_role(interaction : discord.Interaction, role: discord.Role = None, channel: discord.TextChannel = None):
     try:
+        result = db.get_server_setting(interaction.guild.id)
+
+        if result is not None and result.muted_role_id is not None and result.muted_channel_id is not None:
+            await interaction.response.send_message("Mute role and channel are already set up. Please remove the existing mute settings before setting new ones.", ephemeral=True)
+            return
+
         if role is None:
             #create mute role
             role = await interaction.guild.create_role(name="Muted", permissions=discord.Permissions(send_messages=False, speak=False), reason="Creating mute role for muting users")
@@ -396,7 +402,6 @@ async def set_mute_role(interaction : discord.Interaction, role: discord.Role = 
                 await c.set_permissions(role, view_channel=False, reason="Updating channel permissions for mute role")
 
         #update database
-        result = db.get_server_setting(interaction.guild.id)
         if result is None:
             db.add_server_setting(server_setting(server_id=interaction.guild.id, muted_role_id=role.id, muted_channel_id=channel.id))
         else:
