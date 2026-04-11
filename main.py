@@ -339,7 +339,33 @@ async def remove_warn(interaction : discord.Interaction, user: discord.Member, r
         embed = error_embed("An error occurred while trying to remove the warn. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@tree.command(name="set_mute_role", description="set the mute role for the server")
+@tree.command(name="remove_mute_settings", description="remove the mute role and channel settings for the server")
+@discord.app_commands.allowed_installs(guilds=True, users=False)
+@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
+@discord.app_commands.checks.has_permissions(kick_members=True, manage_channels=True)
+async def remove_mute_settings(interaction : discord.Interaction):
+    try:
+        result = db.get_server_setting(interaction.guild.id)
+        if result is not None:
+            if result.muted_role_id is not None:
+                mute_role = interaction.guild.get_role(result.muted_role_id)
+                if mute_role is not None:
+                    await mute_role.delete(reason="Removing mute role settings")
+            if result.muted_channel_id is not None:
+                mute_channel = interaction.guild.get_channel(result.muted_channel_id)
+                if mute_channel is not None:
+                    await mute_channel.delete(reason="Removing mute channel settings")
+            result.muted_role_id = None
+            result.muted_channel_id = None
+            db.edit_server_setting(result)
+        await interaction.response.send_message("The mute role and channel settings have been removed.", ephemeral=True)
+    except Exception as e:
+        print(f"Error removing mute settings: {e}")
+        await on_error_custom(e, "remove_mute_settings command")
+        embed = error_embed("An error occurred while trying to remove the mute settings. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@tree.command(name="set_mute_settings", description="set the mute role and mute channel for the server")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(kick_members=True, manage_channels=True)
@@ -359,6 +385,11 @@ async def set_mute_role(interaction : discord.Interaction, role: discord.Role = 
                 role: discord.PermissionOverwrite(view_channel=True, send_messages=False, speak=False)
             }
             channel = await interaction.guild.create_text_channel(name="muted", overwrites=overwrites, reason="Creating mute channel for muting users")
+
+        #update other servers channels to not allow muted role to view them
+        for c in interaction.guild.channels:
+            if c.id != channel.id:
+                await c.set_permissions(role, view_channel=False, reason="Updating channel permissions for mute role")
 
         #update database
         result = db.get_server_setting(interaction.guild.id)
