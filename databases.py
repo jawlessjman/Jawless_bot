@@ -5,17 +5,21 @@ import datetime
 import discord
 
 class server_setting:
-    def __init__(self, server_id: int, auto_moderation: bool = False, show_auto_moderation_messages: bool = False, audit_channel: int = None):
+    def __init__(self, server_id: int, auto_moderation: bool = False, show_auto_moderation_messages: bool = False, audit_channel: int = None, muted_role_id: int = None, muted_channel_id: int = None):
         self.server_id : int = server_id
         self.auto_moderation : bool = auto_moderation
         self.show_auto_moderation_messages : bool = show_auto_moderation_messages
         self.audit_channel : int = audit_channel
+        self.muted_role_id : int = muted_role_id
+        self.muted_channel_id : int = muted_channel_id
 
     def from_dict(data: dict):
         instance = server_setting(data['server_id'])
         instance.auto_moderation = data.get('auto_moderation', False)
         instance.show_auto_moderation_messages = data.get('show_auto_moderation_messages', False)
         instance.audit_channel = data.get('audit_channel', None)
+        instance.muted_role_id = data.get('muted_role_id', None)
+        instance.muted_channel_id = data.get('muted_channel_id', None)
         return instance
     
 class caveman_challenge:
@@ -142,14 +146,21 @@ class database:
                     {'_id': existing_setting['_id']},
                     {'$set': {
                         'auto_moderation': setting.auto_moderation,
-                        'audit_channel': setting.audit_channel
+                        'audit_channel': setting.audit_channel,
+                        'show_auto_moderation_messages': setting.show_auto_moderation_messages,
+                        'muted_role_id': setting.muted_role_id,
+                        'muted_channel_id': setting.muted_channel_id
+
                     }}
                 )
                 return True
             setting_data = {
                 'server_id': setting.server_id,
                 'auto_moderation': setting.auto_moderation,
-                'audit_channel': setting.audit_channel
+                'audit_channel': setting.audit_channel,
+                'show_auto_moderation_messages': setting.show_auto_moderation_messages,
+                'muted_role_id': setting.muted_role_id,
+                'muted_channel_id': setting.muted_channel_id
             }
             self.server_settings_collection.insert_one(setting_data)
             return True
@@ -186,7 +197,9 @@ class database:
                 {'$set': {
                     'auto_moderation': setting.auto_moderation,
                     'audit_channel': setting.audit_channel,
-                    'show_auto_moderation_messages': setting.show_auto_moderation_messages
+                    'show_auto_moderation_messages': setting.show_auto_moderation_messages,
+                    'muted_role_id': setting.muted_role_id,
+                    'muted_channel_id': setting.muted_channel_id
                 }}
             )
             return result.modified_count > 0

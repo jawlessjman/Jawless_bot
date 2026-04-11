@@ -328,10 +328,132 @@ async def remove_warn(interaction : discord.Interaction, user: discord.User, rea
         await on_error_custom(e, "remove_warn command")
         embed = error_embed("An error occurred while trying to remove the warn. Please try again.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@tree.command(name="set_mute_role", description="set the mute role for the server")
+@discord.app_commands.allowed_installs(guilds=True, users=False)
+@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
+@discord.app_commands.checks.has_permissions(kick_members=True, manage_channels=True)
+@discord.app_commands.describe(role="Role to set as the mute role", channel="Channel to be used for muted users")
+async def set_mute_role(interaction : discord.Interaction, role: discord.Role = None, channel: discord.TextChannel = None):
+    #if role is none then create a new mute role, otherwise set the provided role as the mute role
+    #if the channel is None then create a new channel for muted users that allows members with the role muted to view, and all other channels need to be changed to not allow muted to view them
+
+    try:
+        if role is None:
+            #create mute role
+            role = await interaction.guild.create_role(name="Muted", permissions=discord.Permissions(send_messages=False, speak=False), reason="Creating mute role for muting users")
+        if channel is None:
+            #create mute channel
+            overwrites = {
+                interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                role: discord.PermissionOverwrite(view_channel=True, send_messages=False, speak=False)
+            }
+            channel = await interaction.guild.create_text_channel(name="muted", overwrites=overwrites, reason="Creating mute channel for muting users")
+
+        #update database
+        result = db.get_server_setting(interaction.guild.id)
+        if result is None:
+            db.add_server_setting(server_setting(server_id=interaction.guild.id, muted_role_id=role.id, muted_channel_id=channel.id))
+            cached_server_settings[interaction.guild.id] = server_setting(server_id=interaction.guild.id, muted_role_id=role.id, muted_channel_id=channel.id)
+        else:
+            result.muted_role_id = role.id
+            result.muted_channel_id = channel.id
+            db.edit_server_setting(result)
+            cached_server_settings[interaction.guild.id] = result
+        await interaction.response.send_message(f"The mute role has been set to {role.mention} and the mute channel has been set to {channel.mention}.", ephemeral=True)
+    except Exception as e:
+        print(f"Error creating mute role or channel: {e}")
+        await on_error_custom(e, "set_mute_role command - creating role/channel")
+        embed = error_embed("An error occurred while trying to create the mute role or channel. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    
+@tree.command(name="mute_user", description="mute a user in the server")
+@discord.app_commands.allowed_installs(guilds=True, users=False)
+@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
+@discord.app_commands.checks.has_permissions(kick_members=True)
+@discord.app_commands.describe(user="User to mute", reason="Reason for muting the user")
+async def mute_user(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+    try:
+        if interaction.user.id == user.id:
+            await interaction.response.send_message("You cannot mute yourself!", ephemeral=True)
+            return
+        if (not interaction.user.guild_permissions.administrator) and interaction.user.top_role <= user.top_role:
+            await interaction.response.send_message("You cannot mute a user with a higher or equal role than you.", ephemeral=True)
+            return
+        
+        result = db.get_server_setting(interaction.guild.id)
+        if result is None or result.muted_role_id is None or result.muted_channel_id is None:
+            await interaction.response.send_message("Mute role or channel is not set up. Please contact an administrator to set up the mute role and channel.", ephemeral=True)
+            return
+        
+        mute_role = interaction.guild.get_role(result.muted_role_id)
+        mute_channel = interaction.guild.get_channel(result.muted_channel_id)
+
+        if mute_role is None or mute_channel is None:
+            await interaction.response.send_message("Mute role or channel could not be found. Please contact an administrator to fix the mute role and channel.", ephemeral=True)
+            return
+        
+        await user.add_roles(mute_role, reason=reason)
+        await user.move_to(mute_channel, reason=reason)
+
+        if result.audit_channel:
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel and result.show_auto_moderation_messages:
+                embed = discord.Embed(title="User Muted", description=f"{interaction.user.mention} muted {user.mention} for: {reason}", color=discord.Color.orange())
+                embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
+                await audit_channel.send(embed=embed)
+        await interaction.response.send_message(f"{user.mention} has been muted for: {reason}")
+    except Exception as e:
+        print(f"Error in mute_user command: {e}")
+        await on_error_custom(e, "mute_user command")
+        embed = error_embed("An error occurred while trying to mute the user. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@tree.command(name="unmute_user", description="unmute a user in the server")
+@discord.app_commands.allowed_installs(guilds=True, users=False)
+@discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
+@discord.app_commands.checks.has_permissions(kick_members=True)
+@discord.app_commands.describe(user="User to unmute", reason="Reason for unmuting the user")
+async def unmute_user(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+    try:
+        if interaction.user.id == user.id:
+            await interaction.response.send_message("You cannot unmute yourself!", ephemeral=True)
+            return
+        if (not interaction.user.guild_permissions.administrator) and interaction.user.top_role <= user.top_role:
+            await interaction.response.send_message("You cannot unmute a user with a higher or equal role than you.", ephemeral=True)
+            return
+        
+        result = db.get_server_setting(interaction.guild.id)
+        if result is None or result.muted_role_id is None:
+            await interaction.response.send_message("Mute role is not set up. Please contact an administrator to set up the mute role.", ephemeral=True)
+            return
+        
+        mute_role = interaction.guild.get_role(result.muted_role_id)
+
+        if mute_role is None:
+            await interaction.response.send_message("Mute role could not be found. Please contact an administrator to fix the mute role.", ephemeral=True)
+            return
+        
+        await user.remove_roles(mute_role, reason=reason)
+
+        if result.audit_channel:
+            audit_channel = client.get_channel(result.audit_channel)
+            if audit_channel and result.show_auto_moderation_messages:
+                embed = discord.Embed(title="User Unmuted", description=f"{interaction.user.mention} unmuted {user.mention} for: {reason}", color=discord.Color.green())
+                embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
+                await audit_channel.send(embed=embed)
+        await interaction.response.send_message(f"{user.mention} has been unmuted for: {reason}")
+    except Exception as e:
+        print(f"Error in unmute_user command: {e}")
+        await on_error_custom(e, "unmute_user command")
+        embed = error_embed("An error occurred while trying to unmute the user. Please try again.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
 @tree.command(name="warns", description="check the number of warns a user has in the server")
 @discord.app_commands.allowed_installs(guilds=True, users=False)
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
+@discord.app_commands.checks.has_permissions(kick_members=True)
 @discord.app_commands.describe(user="User to check warns for")
 async def warns(interaction : discord.Interaction, user: discord.User):
     try:
