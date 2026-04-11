@@ -31,11 +31,24 @@ db = database()
 def is_toilet_man(word : str) -> bool:
     return "skibidi" in word.lower()
 
+def get_server_settings(guild_id: int | None):
+    if guild_id is None:
+        return None
+    return db.get_server_setting(guild_id)
+
+def get_audit_channel(guild_id: int | None):
+    result = get_server_settings(guild_id)
+    if result is None or result.audit_channel is None:
+        return result, None
+    return result, client.get_channel(result.audit_channel)
+
 async def on_error_custom(e, function_name : str = "Unknown"):
     error_message = f"An error occurred in function '{function_name}': `{e}`"
     print(error_message)
     if debug:
-        await client.get_user(owner).send(error_message, silent=True)
+        owner_user = client.get_user(owner) or await client.fetch_user(owner)
+        if owner_user is not None:
+            await owner_user.send(error_message, silent=True)
     
 #start up event
 
@@ -43,8 +56,9 @@ async def on_error_custom(e, function_name : str = "Unknown"):
 async def on_ready():
     print(f"We have logged in as {client.user}")
     try:
-        owner_user = client.get_user(owner)
-        await owner_user.send(f"{client.user.name} On, Debug mode is {'on' if debug else 'off'}", silent=True)
+        owner_user = client.get_user(owner) or await client.fetch_user(owner)
+        if owner_user is not None:
+            await owner_user.send(f"{client.user.name} On, Debug mode is {'on' if debug else 'off'}", silent=True)
         synced = await tree.sync()
         print(f"synced {len(synced)} commands")
     except Exception as e:
@@ -71,7 +85,7 @@ async def hello(interaction : discord.Interaction):
 @discord.app_commands.describe(message = "Message to say")
 async def say(interaction : discord.Interaction, message : str):
     try:
-        if db.is_word_banned(message, interaction.guild.id):
+        if interaction.guild is not None and db.does_word_contain_banned_word(message, interaction.guild.id):
             await interaction.response.send_message(f"{interaction.user.mention}, your message contains a banned word and cannot be sent.", ephemeral=True)
             return
         if is_toilet_man(message):
@@ -178,7 +192,7 @@ async def steamuserplaying_command(interaction : discord.Interaction, steamid : 
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(kick_members=True)
 @discord.app_commands.describe(user="User to kick", reason="Reason for kicking the user")
-async def kick(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+async def kick(interaction : discord.Interaction, user: discord.Member, reason: str = "No reason provided"):
     try:
         if interaction.user.id == user.id:
             await interaction.response.send_message("You cannot kick yourself!", ephemeral=True)
@@ -190,8 +204,7 @@ async def kick(interaction : discord.Interaction, user: discord.User, reason: st
             await interaction.guild.kick(user, reason=reason)
             await interaction.response.send_message(f"{user.mention} has been kicked for: {reason}")
             await send_target_view(target=user, target_type="kicked", reason=reason, server=interaction.guild)
-            result = db.get_server_setting(interaction.guild.id)
-            audit_channel = client.get_channel(result.audit_channel)
+            result, audit_channel = get_audit_channel(interaction.guild.id)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="User Kicked", description=f"{interaction.user.mention} kicked {user.mention} for: {reason}", color=discord.Color.orange())
                 embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
@@ -210,7 +223,7 @@ async def kick(interaction : discord.Interaction, user: discord.User, reason: st
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(ban_members=True)
 @discord.app_commands.describe(user="User to ban", reason="Reason for banning the user")
-async def ban(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+async def ban(interaction : discord.Interaction, user: discord.Member, reason: str = "No reason provided"):
     try:
         if interaction.user.id == user.id:
             await interaction.response.send_message("You cannot ban yourself!", ephemeral=True)
@@ -222,8 +235,7 @@ async def ban(interaction : discord.Interaction, user: discord.User, reason: str
             await interaction.guild.ban(user, reason=reason)
             await interaction.response.send_message(f"{user.mention} has been banned for: {reason}")
             await send_target_view(target=user, target_type="banned", reason=reason, server=interaction.guild)
-            result = db.get_server_setting(interaction.guild.id)
-            audit_channel = client.get_channel(result.audit_channel)
+            result, audit_channel = get_audit_channel(interaction.guild.id)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="User Banned", description=f"{interaction.user.mention} banned {user.mention} for: {reason}", color=discord.Color.red())
                 embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
@@ -270,7 +282,7 @@ async def unban(interaction : discord.Interaction, user: discord.User, reason: s
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(manage_messages=True)
 @discord.app_commands.describe(user="User to warn", reason="Reason for warning the user")
-async def warn(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+async def warn(interaction : discord.Interaction, user: discord.Member, reason: str = "No reason provided"):
     try:
         if interaction.user.id == user.id:
             await interaction.response.send_message("You cannot warn yourself!", ephemeral=True)
@@ -282,8 +294,7 @@ async def warn(interaction : discord.Interaction, user: discord.User, reason: st
             db.add_warn(server_warn(server_id=interaction.guild.id, user_id=user.id))
             await send_target_view(target=user, target_type="warned", reason=reason, server=interaction.guild)
             await interaction.response.send_message(f"{user.mention} has been warned for: {reason}")
-            result = db.get_server_setting(interaction.guild.id)
-            audit_channel = client.get_channel(result.audit_channel)
+            result, audit_channel = get_audit_channel(interaction.guild.id)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="User Warned", description=f"{interaction.user.mention} warned {user.mention} for: {reason}", color=discord.Color.orange())
                 embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
@@ -302,7 +313,7 @@ async def warn(interaction : discord.Interaction, user: discord.User, reason: st
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(manage_messages=True)
 @discord.app_commands.describe(user="User to remove warn from", reason="Reason for removing the warn")
-async def remove_warn(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+async def remove_warn(interaction : discord.Interaction, user: discord.Member, reason: str = "No reason provided"):
     try:
         if interaction.user.id == user.id:
             await interaction.response.send_message("You cannot remove a warn from yourself!", ephemeral=True)
@@ -313,8 +324,7 @@ async def remove_warn(interaction : discord.Interaction, user: discord.User, rea
         try:
             if db.remove_warn(server_warn(server_id=interaction.guild.id, user_id=user.id)):
                 await interaction.response.send_message(f"{user.mention} has had their warn removed for: {reason}")
-                result = db.get_server_setting(interaction.guild.id)
-                audit_channel = client.get_channel(result.audit_channel)
+                result, audit_channel = get_audit_channel(interaction.guild.id)
                 if audit_channel and result.show_auto_moderation_messages:
                     embed = discord.Embed(title="Warn Removed", description=f"{interaction.user.mention} removed a warn from {user.mention} for: {reason}", color=discord.Color.green())
                     embed.add_field(name="Action Taken At", value=discord.utils.utcnow(), inline=False)
@@ -354,12 +364,10 @@ async def set_mute_role(interaction : discord.Interaction, role: discord.Role = 
         result = db.get_server_setting(interaction.guild.id)
         if result is None:
             db.add_server_setting(server_setting(server_id=interaction.guild.id, muted_role_id=role.id, muted_channel_id=channel.id))
-            cached_server_settings[interaction.guild.id] = server_setting(server_id=interaction.guild.id, muted_role_id=role.id, muted_channel_id=channel.id)
         else:
             result.muted_role_id = role.id
             result.muted_channel_id = channel.id
             db.edit_server_setting(result)
-            cached_server_settings[interaction.guild.id] = result
         await interaction.response.send_message(f"The mute role has been set to {role.mention} and the mute channel has been set to {channel.mention}.", ephemeral=True)
     except Exception as e:
         print(f"Error creating mute role or channel: {e}")
@@ -373,7 +381,7 @@ async def set_mute_role(interaction : discord.Interaction, role: discord.Role = 
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(kick_members=True)
 @discord.app_commands.describe(user="User to mute", reason="Reason for muting the user")
-async def mute_user(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+async def mute_user(interaction : discord.Interaction, user: discord.Member, reason: str = "No reason provided"):
     try:
         if interaction.user.id == user.id:
             await interaction.response.send_message("You cannot mute yourself!", ephemeral=True)
@@ -397,6 +405,9 @@ async def mute_user(interaction : discord.Interaction, user: discord.User, reaso
         await user.add_roles(mute_role, reason=reason)
         await user.move_to(mute_channel, reason=reason)
 
+        if isinstance(mute_channel, discord.VoiceChannel) and user.voice is not None:
+            await user.move_to(mute_channel, reason=reason)
+
         if result.audit_channel:
             audit_channel = client.get_channel(result.audit_channel)
             if audit_channel and result.show_auto_moderation_messages:
@@ -415,7 +426,7 @@ async def mute_user(interaction : discord.Interaction, user: discord.User, reaso
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(kick_members=True)
 @discord.app_commands.describe(user="User to unmute", reason="Reason for unmuting the user")
-async def unmute_user(interaction : discord.Interaction, user: discord.User, reason: str = "No reason provided"):
+async def unmute_user(interaction : discord.Interaction, user: discord.Member, reason: str = "No reason provided"):
     try:
         if interaction.user.id == user.id:
             await interaction.response.send_message("You cannot unmute yourself!", ephemeral=True)
@@ -455,7 +466,7 @@ async def unmute_user(interaction : discord.Interaction, user: discord.User, rea
 @discord.app_commands.allowed_contexts(guilds=True, dms=False, private_channels=False)
 @discord.app_commands.checks.has_permissions(kick_members=True)
 @discord.app_commands.describe(user="User to check warns for")
-async def warns(interaction : discord.Interaction, user: discord.User):
+async def warns(interaction : discord.Interaction, user: discord.Member):
     try:
         warn_data = db.get_warns(server_id=interaction.guild.id, user_id=user.id)
         if warn_data:
@@ -503,7 +514,10 @@ async def purge(interaction : discord.Interaction, amount: int):
         print(f"Error in purge command: {e}")
         await on_error_custom(e, "purge command")
         embed = error_embed("An error occurred while trying to purge messages. Please try again.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        if interaction.response.is_done():
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         
 #banned words commands
 
@@ -523,11 +537,9 @@ async def change_server_bot_settings(interaction : discord.Interaction, auto_mod
             result.show_auto_moderation_messages = show_auto_moderation_messages
         
         if db.edit_server_setting(result):
-            cached_server_settings[interaction.guild.id] = result
             await interaction.response.send_message("Server bot settings have been updated.", ephemeral=True)
 
-            result = db.get_server_setting(interaction.guild.id)
-            audit_channel = client.get_channel(result.audit_channel)
+            result, audit_channel = get_audit_channel(interaction.guild.id)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="Server Bot Settings Updated", description=f"{interaction.user.mention} updated the server bot settings.", color=discord.Color.blue())
                 embed.add_field(name="Auto Moderation", value=str(result.auto_moderation), inline=False)
@@ -552,11 +564,9 @@ async def add_audit_log_channel(interaction : discord.Interaction, channel: disc
         result = db.get_server_setting(interaction.guild.id)
         if result is None:
             db.add_server_setting(server_setting(server_id=interaction.guild.id, audit_channel=channel.id))
-            cached_server_settings[interaction.guild.id] = server_setting(server_id=interaction.guild.id, audit_channel=channel.id)
         else:
             result.audit_channel = channel.id
             db.edit_server_setting(result)
-            cached_server_settings[interaction.guild.id] = result
         await interaction.response.send_message(f"{channel.mention} has been set as the audit log channel.", ephemeral=True)
     except Exception as e:
         await on_error_custom(e, "add_audit_log_channel command")
@@ -573,7 +583,6 @@ async def remove_audit_log_channel(interaction : discord.Interaction):
         if result is not None:
             result.audit_channel = None
             db.edit_server_setting(result)
-            cached_server_settings[interaction.guild.id] = result
         await interaction.response.send_message("The audit log channel has been removed.", ephemeral=True)
     except Exception as e:
         await on_error_custom(e, "remove_audit_log_channel command")
@@ -606,8 +615,7 @@ async def add_banned_word(interaction : discord.Interaction, word: str):
         upper_word = word.upper()
         if db.add_banned_word(banned_word(word=upper_word, server_id=interaction.guild.id)):
             await interaction.response.send_message(f"{word} has been added to the banned words list.", ephemeral=True)
-            result = db.get_server_setting(interaction.guild.id)
-            audit_channel = client.get_channel(result.audit_channel)
+            result, audit_channel = get_audit_channel(interaction.guild.id)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="Banned Word Added", description=f"{interaction.user.mention} added `{word}` to the banned words list.", color=discord.Color.red())
                 embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
@@ -630,8 +638,7 @@ async def remove_banned_word(interaction : discord.Interaction, word: str):
         upper_word = word.upper()
         if db.remove_banned_word(word=upper_word, server_id=interaction.guild.id):
             await interaction.response.send_message(f"{word} has been removed from the banned words list.", ephemeral=True)
-            result = db.get_server_setting(interaction.guild.id)
-            audit_channel = client.get_channel(result.audit_channel)
+            result, audit_channel = get_audit_channel(interaction.guild.id)
             if audit_channel and result.show_auto_moderation_messages:
                 embed = discord.Embed(title="Banned Word Removed", description=f"{interaction.user.mention} removed `{word}` from the banned words list.", color=discord.Color.red())
                 embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
@@ -668,10 +675,9 @@ async def is_word_banned(interaction : discord.Interaction, word: str):
 @discord.app_commands.checks.has_permissions(manage_messages=True)
 async def remove_all_banned_words(interaction : discord.Interaction):
     try:
-        db.banned_words_collection.delete_many({'server_id': interaction.guild.id})
+        db.remove_all_banned_words(interaction.guild.id)
         await interaction.response.send_message("All banned words have been removed from this server.", ephemeral=True)
-        result = db.get_server_setting(interaction.guild.id)
-        audit_channel = client.get_channel(result.audit_channel)
+        result, audit_channel = get_audit_channel(interaction.guild.id)
         if audit_channel and result.show_auto_moderation_messages:
             embed = discord.Embed(title="All Banned Words Removed", description=f"All banned words have been removed from the server by {interaction.user.mention}.", color=discord.Color.red())
             embed.add_field(name="Action Taken At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
@@ -683,8 +689,6 @@ async def remove_all_banned_words(interaction : discord.Interaction):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 #client events
-
-cached_server_settings = {}
 
 def is_media(message : discord.Message) -> bool:
     if message.attachments:
@@ -698,17 +702,9 @@ def is_media(message : discord.Message) -> bool:
             return True
     return False
 
-def get_server_settings(guild_id):
-    if guild_id in cached_server_settings:
-        return cached_server_settings[guild_id]
-    
-    result = db.get_server_setting(guild_id)
-    cached_server_settings[guild_id] = result
-    return result
-
 @client.event
 async def on_message_edit(before : discord.Message, after : discord.Message):
-    if before.author == client.user:
+    if before.author == client.user or before.guild is None:
         return
     
     if is_media(after):
@@ -741,7 +737,7 @@ async def on_message_edit(before : discord.Message, after : discord.Message):
 
 @client.event
 async def on_message_delete(message : discord.Message):
-    if message.author == client.user:
+    if message.author == client.user or message.guild is None:
         return
 
     result = get_server_settings(message.guild.id)
@@ -768,6 +764,8 @@ async def on_message_delete(message : discord.Message):
 @client.event
 async def on_message_bulk_delete(messages : list[discord.Message]):
     if len(messages) == 0:
+        return
+    if messages[0].guild is None:
         return
 
     result = get_server_settings(messages[0].guild.id)
@@ -818,7 +816,7 @@ def get_member_string(member : discord.Member):
 
 @client.event
 async def on_member_update(before : discord.Member, after : discord.Member):
-    if before.guild or after.guild is None:
+    if before.guild is None or after.guild is None:
         return
 
     result = get_server_settings(after.guild.id)
@@ -826,14 +824,11 @@ async def on_member_update(before : discord.Member, after : discord.Member):
         return
 
     try:
-        #print the differences between before and after to the console for debugging purposes
-        await on_error_custom(f"before: {get_member_string(before)}\n\n\nafter: {get_member_string(after)}", "on_member_update debug log")
-        
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Updated", description=f"{before.mention} was updated in {after.guild.name}", color=discord.Color.blue())
-            if before.timeout != after.timeout:
-                if after.timeout:
+            if before.timed_out_until != after.timed_out_until:
+                if after.is_timed_out():
                     embed.add_field(name="Member Timed Out", value=f"{after.mention} has been timed out until {after.timed_out_until}", inline=False)
                 else:
                     embed.add_field(name="Member Timeout Removed", value=f"{after.mention} is no longer timed out", inline=False)
@@ -859,7 +854,7 @@ async def on_member_update(before : discord.Member, after : discord.Member):
         await on_error_custom(e, "on_member_update")
 
 @client.event 
-async def on_member_ban(guild : discord.Guild, user : discord.Member):
+async def on_member_ban(guild : discord.Guild, user : discord.User):
     result = get_server_settings(guild.id)
 
     if result == None or result.audit_channel is None:
@@ -869,7 +864,6 @@ async def on_member_ban(guild : discord.Guild, user : discord.Member):
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
             embed = discord.Embed(title="Member Banned", description=f"{user.mention} has been banned from the server.", color=discord.Color.red())
-            embed.add_field(name="Member since", value=user.joined_at if user.joined_at else "Unknown", inline=False)
             embed.add_field(name="Banned At", value=f"<t:{discord.utils.utcnow().timestamp()}:F>", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
@@ -892,6 +886,8 @@ async def on_member_unban(guild : discord.Guild, user : discord.User):
 
 @client.event
 async def on_invite_create(invite : discord.Invite):
+    if invite.guild is None:
+        return
     result = get_server_settings(invite.guild.id)
     if result == None or result.audit_channel is None:
         return
@@ -899,18 +895,17 @@ async def on_invite_create(invite : discord.Invite):
     try:
         audit_channel = client.get_channel(result.audit_channel)
         if audit_channel:
-            embed = discord.Embed(title="Invite Created", description=f"{invite.inviter.mention} created an invite to {invite.channel.mention}", color=discord.Color.green())
+            inviter = invite.inviter.mention if invite.inviter is not None else "Unknown user"
+            channel = invite.channel.mention if invite.channel is not None else "an unknown channel"
+            embed = discord.Embed(title="Invite Created", description=f"{inviter} created an invite to {channel}", color=discord.Color.green())
             embed.add_field(name="Invite Code", value=invite.code, inline=False)
             embed.add_field(name="Max Uses", value=invite.max_uses if invite.max_uses else "No limit", inline=False)
             await audit_channel.send(embed=embed)
     except Exception as e:
         await on_error_custom(e, "on_invite_create")
 
-max_rand_number = 50
-
 @client.event
 async def on_message(message : discord.Message):
-    global max_rand_number
     if message.author == client.user:
         return
     
@@ -927,7 +922,7 @@ async def on_message(message : discord.Message):
                     embed.add_field(name=f"{x}.", value=f"Start Time: {attempt.start_time}\nFailed: Yes\nTime Lasted: {time_diff}", inline=False)
             await message.reply(embed=embed)
         else:
-            on_error_custom("No caveman challenge attempts found in the database.", "on_message !lc command")
+            await on_error_custom("No caveman challenge attempts found in the database.", "on_message !lc command")
     
     if message.content.startswith("!timec"):
         result = db.get_caveman_challenge()
@@ -939,20 +934,11 @@ async def on_message(message : discord.Message):
                 time_diff = discord.utils.utcnow() - result.start_time
                 await message.reply(f"Caveman challenge is still going! Time so far: {time_diff}")
     
-    if message.author.id == 586246529996816406: #if caveman sends a message, there is a 1 in 50 chance it will be deleted to mess with him
-        if randint(1, max_rand_number) == 1:
-            await message.delete()
-            return
-
     if message.author.id == owner:
         if message.content.startswith("!debug"):
             global debug
             debug = not debug
             await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
-            return
-        if message.content.startswith("!rand"):
-            max_rand_number = int(message.content.split(" ")[1])
-            await message.reply(f"Max random number is now {max_rand_number}")
             return
         if message.content.startswith("!startc"):
             if db.add_caveman_challenge():

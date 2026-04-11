@@ -1,4 +1,4 @@
 discord
 requests
-dotenv
+python-dotenv
 pymongo

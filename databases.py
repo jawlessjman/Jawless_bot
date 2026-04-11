@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import datetime
 import discord
+import re
 
 class server_setting:
     def __init__(self, server_id: int, auto_moderation: bool = False, show_auto_moderation_messages: bool = False, audit_channel: int = None, muted_role_id: int = None, muted_channel_id: int = None):
@@ -80,6 +81,8 @@ class database:
             self.warns_collection = self.db['server_warns']
             self.banned_words_collection = self.db['banned_words']
             self.server_settings_collection = self.db['server_settings']
+            self._banned_word_cache: dict[int, list[str]] = {}
+            self._banned_word_pattern_cache: dict[int, re.Pattern[str] | None] = {}
         except Exception as e:
             print(f"Error connecting to MongoDB: {e}")
             self.client = None
@@ -87,6 +90,40 @@ class database:
             self.warns_collection = None
             self.banned_words_collection = None
             self.server_settings_collection = None
+            self._banned_word_cache = {}
+            self._banned_word_pattern_cache = {}
+
+    def _invalidate_banned_word_cache(self, server_id: int) -> None:
+        self._banned_word_cache.pop(server_id, None)
+        self._banned_word_pattern_cache.pop(server_id, None)
+
+    def _get_banned_words(self, server_id: int) -> list[str]:
+        if server_id in self._banned_word_cache:
+            return self._banned_word_cache[server_id]
+
+        banned_words = [
+            item['word']
+            for item in self.banned_words_collection.find(
+                {'server_id': server_id},
+                {'word': 1, '_id': 0},
+            )
+        ]
+        self._banned_word_cache[server_id] = banned_words
+        return banned_words
+
+    def _get_banned_word_pattern(self, server_id: int) -> re.Pattern[str] | None:
+        if server_id in self._banned_word_pattern_cache:
+            return self._banned_word_pattern_cache[server_id]
+
+        banned_words = self._get_banned_words(server_id)
+        if not banned_words:
+            self._banned_word_pattern_cache[server_id] = None
+            return None
+
+        escaped_words = [re.escape(word) for word in banned_words]
+        pattern = re.compile(r'\b(?:' + '|'.join(escaped_words) + r')\b', re.IGNORECASE)
+        self._banned_word_pattern_cache[server_id] = pattern
+        return pattern
 
     #get 10 results of caveman challenges sorted by longest time to fail
     def get_caveman_challenges(self) -> list[caveman_challenge]:
@@ -200,9 +237,10 @@ class database:
                     'show_auto_moderation_messages': setting.show_auto_moderation_messages,
                     'muted_role_id': setting.muted_role_id,
                     'muted_channel_id': setting.muted_channel_id
-                }}
+                }},
+                upsert=True,
             )
-            return result.modified_count > 0
+            return result.acknowledged
         except Exception as e:
             print(f"Error editing server setting: {e}")
             return False
@@ -283,6 +321,7 @@ class database:
                 'server_id': word.server_id
             }
             self.banned_words_collection.insert_one(word_data)
+            self._invalidate_banned_word_cache(word.server_id)
             return True
         except Exception as e:
             print(f"Error adding banned word: {e}")
@@ -292,13 +331,10 @@ class database:
         try:
             if server_id is None:
                 return False
-            banned_words = self.banned_words_collection.find({
-                'server_id': server_id
-            })
-            for banned_word in banned_words:
-                if banned_word['word'] in content:
-                    return True
-            return False
+            pattern = self._get_banned_word_pattern(server_id)
+            if pattern is None:
+                return False
+            return pattern.search(content) is not None
         except Exception as e:
             print(f"Error checking banned words in content: {e}")
             return False
@@ -307,10 +343,7 @@ class database:
         try:
             if server_id is None:
                 return False
-            return self.banned_words_collection.find_one({
-                'word': word,
-                'server_id': server_id
-            }) is not None 
+            return word in self._get_banned_words(server_id)
         except Exception as e:
             print(f"Error checking if word is banned: {e}")
             return False
@@ -321,6 +354,8 @@ class database:
                 'word': word,
                 'server_id': server_id
             })
+            if result.deleted_count > 0:
+                self._invalidate_banned_word_cache(server_id)
             return result.deleted_count > 0
         except Exception as e:
             print(f"Error removing banned word: {e}")
@@ -331,6 +366,7 @@ class database:
             result = self.banned_words_collection.delete_many({
                 'server_id': server_id
             })
+            self._invalidate_banned_word_cache(server_id)
             return result.deleted_count > 0
         except Exception as e:
             print(f"Error removing all banned words: {e}")
