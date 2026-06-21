@@ -539,7 +539,7 @@ async def warns(interaction : discord.Interaction, user: discord.Member):
 @discord.app_commands.describe(amount="Number of messages to purge")
 async def purge(interaction : discord.Interaction, amount: int):
     try:
-        if amount < 1 or amount > 100:
+        if amount < 1 or amount > 1000:
             await interaction.response.send_message("You can only purge between 1 and 100 messages.", ephemeral=True)
             return
         
@@ -976,33 +976,12 @@ async def on_message(message : discord.Message):
         else:
             await on_error_custom("No caveman challenge attempts found in the database.", "on_message !lc command")
     
-    if message.content.startswith("!timec"):
-        result = db.get_caveman_challenge()
-        if result:
-            if result.fail_time:
-                time_diff = result.fail_time - result.start_time
-                await message.reply(f"Caveman challenge failed! Time lasted: {time_diff}")
-            else:
-                time_diff = discord.utils.utcnow() - result.start_time
-                await message.reply(f"Caveman challenge is still going! Time so far: {time_diff}")
-    
     if message.author.id == owner:
         if message.content.startswith("!debug"):
             global debug
             debug = not debug
             await message.channel.send(f"Debug mode is now {'on' if debug else 'off'}")
             return
-        if message.content.startswith("!startc"):
-            if db.add_caveman_challenge():
-                await message.reply("Caveman challenge started!")
-        if message.content.startswith("!resetc"):
-            if db.fail_caveman_challenge():
-                result = db.get_caveman_challenge()
-                if result and result.fail_time:
-                    time_diff = result.fail_time - result.start_time
-                    await message.reply(f"Caveman challenge failed! Time lasted: {time_diff}")
-                    db.add_caveman_challenge() #start a new challenge immediately after resetting
-                    await message.reply("Caveman challenge restarted!")
     
     if message.guild is None or message.channel is None:
         return
